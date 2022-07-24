@@ -1,15 +1,27 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:localstorage/localstorage.dart';
+import 'package:skynote/components/drawer.dart';
+import 'package:skynote/google_drive_search.dart';
 import 'package:skynote/models/base_paint_element.dart';
 import 'package:skynote/models/line.dart';
 import 'package:skynote/models/line_fragment.dart';
+import 'package:skynote/models/note_book.dart';
 import 'package:skynote/models/point.dart';
-import 'dart:ui';
+import 'package:googleapis/drive/v3.dart' as drive;
+import 'package:google_sign_in/google_sign_in.dart' as signIn;
 import 'package:vector_math/vector_math_64.dart' as vm;
-import 'package:zoom_widget/zoom_widget.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:http/io_client.dart';
+import 'package:http/http.dart' as http;
+
+import 'package:flutter_onedrive/flutter_onedrive.dart';
 
 void main() {
-  runApp(MyApp());
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -19,17 +31,23 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        visualDensity: VisualDensity.adaptivePlatformDensity,
-      ),
-      home: const InfiniteCanvasPage(),
-    );
+        title: 'Flutter Demo',
+        theme: ThemeData(
+          primarySwatch: Colors.blue,
+          visualDensity: VisualDensity.adaptivePlatformDensity,
+        ),
+        home: InfiniteCanvasPage());
   }
 }
 
 enum CanvasState { pan, draw, erase, zoom }
+
+class PointerMap {
+  vm.Vector2 start;
+  vm.Vector2? current;
+  vm.Vector2? end;
+  PointerMap(this.start, this.current, this.end);
+}
 
 String _canvasStateToString(CanvasState state) {
   switch (state) {
@@ -56,12 +74,11 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
   CanvasState canvasState = CanvasState.draw;
 
   List<LineFragment> _currentLineFragments = [];
-  final List<PaintElement> _paintElements = [];
+  List<PaintElement>? _paintElements;
   vm.Vector2? lineStart;
 
   late LineFragment _lineEraser;
-
-  final Map<int, Offset> _pointerMap = {};
+  Map<int, PointerMap> _pointerMap = {};
 
   Offset offset = Offset(0, 0);
 
@@ -74,6 +91,59 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
   // For COLOR PICKER
   // Initial Selected Value
   Color dropdownValueColor = Colors.indigo;
+
+  final LocalStorage storage = LocalStorage('some_key.json');
+
+  @override
+  void initState() {
+    // createTest();
+    getSavedData();
+    super.initState();
+  }
+
+  NoteBook _noteBook = NoteBook("TestBook");
+
+  void createTest() async {
+    NoteSection section = NoteSection("TestSection");
+    Note note = Note("TestNote");
+
+    section.addNote(note);
+    _noteBook.addSection(section);
+    await storage.ready;
+    _paintElements = note.elements;
+    setState(() {});
+  }
+
+  void saveData() async {
+    await storage.ready;
+    storage.setItem('noteBook', _noteBook.toJson());
+    print(_noteBook.toJson());
+  }
+
+  void getSavedData() async {
+    await storage.ready;
+    var noteBookJson = storage.getItem('noteBook');
+    if (noteBookJson != null) {
+      _noteBook = NoteBook.fromJson(noteBookJson);
+      _paintElements = _noteBook.sections[0].notes[0].elements;
+      setState(() {});
+    } else {
+      print("No data found");
+    }
+  }
+
+  Future<void> getDataFromStorage() async {
+    await storage.ready;
+    try {
+      Map<String, dynamic> notebookData = storage.getItem('Notebook');
+      if (notebookData != null && notebookData.isNotEmpty) {
+        _noteBook = NoteBook.fromJson(notebookData);
+      }
+    } catch (e) {
+      storage.deleteItem('Notebook');
+      print("No data in storage");
+    }
+  }
 
   // List of items in our dropdown menu
   var colorItems = [
@@ -102,12 +172,46 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
     9.0,
     10.0,
   ];
-
   double currScale = 1;
+  var scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      drawer: Drawer(
+        child: ListView(
+          // Important: Remove any padding from the ListView.
+          padding: EdgeInsets.zero,
+          children: [
+            const DrawerHeader(
+              decoration: BoxDecoration(
+                color: Colors.blue,
+              ),
+              child: Text('Drawer Header'),
+            ),
+            ListTile(
+              title: const Text('Item 1'),
+              onTap: () {
+                // Update the state of the app.
+                // ...
+              },
+            ),
+            // ListTile(
+            //   title: const Text('Load'),
+            //   onTap: () {
+            //     var data = storage.getItem('Test');
+            //     print(data);
+            //     List<PaintElement> paintElements = PaintElement.fromJson(data);
+            //     setState(() {
+            //       _paintElements.clear();
+            //       _paintElements.addAll(paintElements);
+            //     });
+            //   },
+            // ),
+          ],
+        ),
+      ),
+      key: scaffoldKey,
       floatingActionButton: FloatingActionButton(
         backgroundColor:
             canvasState == CanvasState.draw ? Colors.blue : Colors.red,
@@ -125,291 +229,353 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
           style: TextStyle(color: Colors.white),
         ),
       ),
-      body: Column(
-        children: <Widget>[
-          Container(
-            height: 70,
-            width: double.infinity,
-            color: Colors.grey,
-            child: Row(
+      body: _paintElements == null
+          ? Center(
+              child: ElevatedButton(
+              child: Text('Create Empty Notebook'),
+              onPressed: () {
+                setState(() {
+                  _noteBook = NoteBook("Test");
+                });
+                scaffoldKey.currentState!.openDrawer();
+              },
+            ))
+          : Column(
               children: <Widget>[
-                IconButton(
-                  icon: const Icon(Icons.arrow_back),
-                  color: Colors.black,
-                  onPressed: () {
-                    if (_paintElements.isNotEmpty) {
-                      _paintElements.removeLast();
-                    }
-                    setState(() {});
-                  },
-                ),
-                // const Text(
-                //   'Sky',
-                //   style: TextStyle(
-                //     color: Colors.black,
-                //     fontSize: 20,
-                //     fontWeight: FontWeight.bold,
-                //   ),
-                // ),
-                DropdownButton(
-                  value: dropdownValueColor,
-                  items: colorItems
-                      .map(
-                        (color) => DropdownMenuItem(
-                          value: color,
-                          child: ColoredBox(
-                            color: color,
-                            child: const SizedBox(
-                              width: 20,
-                              height: 20,
-                            ),
-                          ),
+                Container(
+                  padding: EdgeInsets.all(8),
+                  height: 70,
+                  width: double.infinity,
+                  color: Colors.grey,
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: <Widget>[
+                        IconButton(
+                          icon: Icon(Icons.menu),
+                          onPressed: () =>
+                              scaffoldKey.currentState?.openDrawer(),
                         ),
-                      )
-                      .toList(),
-                  onChanged: (Color? newValue) {
-                    setState(() {
-                      dropdownValueColor = newValue!;
-                      paint.color = newValue;
-                    });
-                  },
-                ),
-                DropdownButton(
-                  value: dropdownValueStrokeWidth,
-                  items: strokeWidthItems
-                      .map(
-                        (strokeWidth) => DropdownMenuItem(
-                          value: strokeWidth,
-                          child: Text(
-                            '$strokeWidth',
-                            style: TextStyle(fontSize: 20, color: Colors.black),
-                          ),
+                        IconButton(
+                          icon: const Icon(Icons.arrow_back),
+                          color: Colors.black,
+                          onPressed: () {
+                            if (_paintElements!.isNotEmpty) {
+                              _paintElements!.removeLast();
+                            }
+                            setState(() {});
+                          },
                         ),
-                      )
-                      .toList(),
-                  onChanged: (double? newValue) {
-                    setState(() {
-                      dropdownValueStrokeWidth = newValue!;
-                      paint.strokeWidth = newValue;
-                    });
-                  },
-                  dropdownColor: Colors.white,
-                ),
-                // Eraser Button
-                IconButton(
-                  icon: const Icon(Icons.delete),
-                  color: CanvasState.erase == canvasState
-                      ? Colors.red
-                      : Colors.black,
-                  onPressed: () {
-                    setState(() {
-                      if (canvasState == CanvasState.erase) {
-                        canvasState = CanvasState.draw;
-                      } else {
-                        canvasState = CanvasState.erase;
-                      }
-                    });
-                  },
-                ),
-                //Save Button
-                IconButton(
-                  icon: const Icon(Icons.save),
-                  color: Colors.black,
-                  onPressed: () {
-                    var allJson =
-                        _paintElements.map((e) => e.toJson()).toList();
-                    print(allJson);
-                  },
-                ),
-                // Zoom Button
-                IconButton(
-                  icon: const Icon(Icons.zoom_in),
-                  color: Colors.black,
-                  onPressed: () {
-                    setState(() {
-                      if (currScale < 4) {
-                        currScale += 0.5;
-                      }
-                    });
-                  },
-                ),
-                IconButton(
-                  icon: const Icon(Icons.zoom_out),
-                  color: Colors.black,
-                  onPressed: () {
-                    setState(() {
-                      if (currScale >= 1.5) {
-                        currScale -= 0.5;
-                      }
-                    });
-                  },
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            // child: Zoom(
-            //   maxZoomHeight: 1800,
-            //   maxZoomWidth: 1800,
-            //   enableScroll: false,
-            // child: Zoom(
-            //   maxZoomWidth: 1800,
-            //   maxZoomHeight: 1800,
-            //   initZoom: 0.5,
-            //   enableScroll: false,
-            // child: OnlyOnePointerRecognizerWidget(
-            child: Transform.scale(
-              scale: currScale,
-              alignment: Alignment.topLeft,
-              child: Listener(
-                onPointerDown: (event) => {
-                  setState(() {
-                    if (canvasState == CanvasState.draw ||
-                        canvasState == CanvasState.erase) {
-                      lineStart = vm.Vector2(event.localPosition.dx - offset.dx,
-                          event.localPosition.dy - offset.dy);
-                    }
-                  })
-                },
+                        // const Text(
+                        //   'Sky',
+                        //   style: TextStyle(
+                        //     color: Colors.black,
+                        //     fontSize: 20,
+                        //     fontWeight: FontWeight.bold,
+                        //   ),
+                        // ),
+                        DropdownButton(
+                          value: dropdownValueColor,
+                          items: colorItems
+                              .map(
+                                (color) => DropdownMenuItem(
+                                  value: color,
+                                  child: ColoredBox(
+                                    color: color,
+                                    child: const SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                    ),
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (Color? newValue) {
+                            setState(() {
+                              dropdownValueColor = newValue!;
+                              paint.color = newValue;
+                            });
+                          },
+                        ),
+                        DropdownButton(
+                          value: dropdownValueStrokeWidth,
+                          items: strokeWidthItems
+                              .map(
+                                (strokeWidth) => DropdownMenuItem(
+                                  value: strokeWidth,
+                                  child: Text(
+                                    '$strokeWidth',
+                                    style: TextStyle(
+                                        fontSize: 20, color: Colors.black),
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (double? newValue) {
+                            setState(() {
+                              dropdownValueStrokeWidth = newValue!;
+                              paint.strokeWidth = newValue;
+                            });
+                          },
+                          dropdownColor: Colors.white,
+                        ),
+                        // Eraser Button
+                        IconButton(
+                          icon: const Icon(Icons.delete),
+                          color: CanvasState.erase == canvasState
+                              ? Colors.red
+                              : Colors.black,
+                          onPressed: () {
+                            setState(() {
+                              if (canvasState == CanvasState.erase) {
+                                canvasState = CanvasState.draw;
+                              } else {
+                                canvasState = CanvasState.erase;
+                              }
+                            });
+                          },
+                        ),
+                        //Save Button
+                        IconButton(
+                          icon: const Icon(Icons.save),
+                          color: Colors.black,
+                          onPressed: () {
+                            saveData();
+                            // var allJson =
+                            //     _paintElements!.map((e) => e.toJson()).toList();
+                            // // print(allJson);
+                            // storage.setItem('Test', allJson);
+                          },
+                        ),
+                        // Zoom Button
+                        IconButton(
+                          icon: const Icon(Icons.zoom_in),
+                          color: Colors.black,
+                          onPressed: () {
+                            setState(() {
+                              if (currScale < 4) {
+                                currScale += 0.5;
+                              }
+                            });
+                          },
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.zoom_out),
+                          color: Colors.black,
+                          onPressed: () {
+                            setState(() {
+                              if (currScale >= 1.5) {
+                                currScale -= 0.5;
+                              }
+                            });
+                          },
+                        ),
+                        // Googlew Login
+                        IconButton(
+                          icon: const Icon(Icons.account_circle),
+                          color: Colors.black,
+                          onPressed: () async {
+                            await Firebase.initializeApp(
+                              options: DefaultFirebaseOptions.currentPlatform,
+                            );
+                            final _googleSignIn = signIn.GoogleSignIn(
+                                clientId:
+                                    "244156996836-79kchr7r10f2qnqln9b81v58dnmg38li.apps.googleusercontent.com",
+                                scopes: [drive.DriveApi.driveScope]);
 
-                onPointerMove: (event) => {
-                  setState(() {
-                    if (canvasState == CanvasState.pan) {
-                      offset += event.delta;
-                      print("Should move");
-                    } else if (canvasState == CanvasState.draw) {
-                      if (lineStart == null) {
-                        lineStart = vm.Vector2(
-                            event.localPosition.dx - offset.dx,
-                            event.localPosition.dy - offset.dy);
-                      } else {
-                        _currentLineFragments.add(LineFragment(
-                          lineStart!,
-                          vm.Vector2(event.localPosition.dx - offset.dx,
-                              event.localPosition.dy - offset.dy),
-                        ));
-                        lineStart = vm.Vector2(
-                            event.localPosition.dx - offset.dx,
-                            event.localPosition.dy - offset.dy);
-                      }
-                    } else if (canvasState == CanvasState.erase) {
-                      _lineEraser = LineFragment(
-                        lineStart!,
-                        vm.Vector2(event.localPosition.dx - offset.dx,
-                            event.localPosition.dy - offset.dy),
-                      );
-                      lineStart = vm.Vector2(event.localPosition.dx - offset.dx,
-                          event.localPosition.dy - offset.dy);
-                      for (int i = _paintElements.length - 1; i >= 0; i--) {
-                        if (_paintElements[i]
-                            .intersectAsSegments(_lineEraser)) {
-                          _paintElements.removeAt(i);
-                        }
-                      }
-                    }
-                  })
-                },
-                onPointerUp: (event) => {
-                  if (canvasState == CanvasState.draw)
-                    {
-                      if (lineStart != null)
-                        {
-                          if (_currentLineFragments.isEmpty)
-                            {
-                              _paintElements
-                                  .add(Point(lineStart!.x, lineStart!.y, paint))
-                            }
-                          else
-                            {
-                              _paintElements.add(Line(
-                                _currentLineFragments,
-                                paint,
-                              )),
-                              _currentLineFragments = []
-                            }
-                        }
-                    },
-                  setState(() {})
-                },
-                // child: GestureDetector(
-
-                //   onPanDown: (details) {
-                //     setState(() {
-                //       if (canvasState == CanvasState.draw ||
-                //           canvasState == CanvasState.erase) {
-                //         lineStart = vm.Vector2(
-                //             details.localPosition.dx - offset.dx,
-                //             details.localPosition.dy - offset.dy);
-                //       }
-                //     });
-                //   },
-                //   onPanUpdate: (details) {
-                //     setState(() {
-                //       if (canvasState == CanvasState.pan) {
-                //         offset += details.delta;
-                //       } else if (canvasState == CanvasState.draw) {
-                //         if (lineStart == null) {
-                //           lineStart = vm.Vector2(
-                //               details.localPosition.dx - offset.dx,
-                //               details.localPosition.dy - offset.dy);
-                //         } else {
-                //           _currentLineFragments.add(LineFragment(
-                //             lineStart!,
-                //             vm.Vector2(details.localPosition.dx - offset.dx,
-                //                 details.localPosition.dy - offset.dy),
-                //           ));
-                //           lineStart = vm.Vector2(
-                //               details.localPosition.dx - offset.dx,
-                //               details.localPosition.dy - offset.dy);
-                //         }
-                //       } else if (canvasState == CanvasState.erase) {
-                //         _lineEraser = LineFragment(
-                //           lineStart!,
-                //           vm.Vector2(details.localPosition.dx - offset.dx,
-                //               details.localPosition.dy - offset.dy),
-                //         );
-                //         lineStart = vm.Vector2(
-                //             details.localPosition.dx - offset.dx,
-                //             details.localPosition.dy - offset.dy);
-                //         for (int i = _paintElements.length - 1; i >= 0; i--) {
-                //           if (_paintElements[i]
-                //               .intersectAsSegments(_lineEraser)) {
-                //             _paintElements.removeAt(i);
-                //           }
-                //         }
-                //       }
-                //     });
-                //   },
-                //   onPanEnd: (details) {
-                //     if (canvasState == CanvasState.draw) {
-                //       if (lineStart != null) {
-                //         if (_currentLineFragments.isEmpty) {
-                //           _paintElements
-                //               .add(Point(lineStart!.x, lineStart!.y, paint));
-                //         } else {
-                //           _paintElements.add(Line(
-                //             _currentLineFragments,
-                //             paint,
-                //           ));
-                //           _currentLineFragments = [];
-                //         }
-                //       }
-                //     }
-                //     setState(() {});
-                //   },
-                child: SizedBox.expand(
-                  child: ClipRRect(
-                    child: CustomPaint(
-                        painter: CanvasCustomPainter(_paintElements,
-                            _currentLineFragments, offset, paint)),
+                            //         _googleSignIn.sc
+                            // _googleSignIn
+                            //   ..standard(scopes: );
+                            final signIn.GoogleSignInAccount? account =
+                                await _googleSignIn.signIn();
+                            print("User account $account");
+                          },
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-              // ),
+                Expanded(
+                  // child: Zoom(
+                  //   maxZoomHeight: 1800,
+                  //   maxZoomWidth: 1800,
+                  //   enableScroll: false,
+                  // child: Zoom(
+                  //   maxZoomWidth: 1800,
+                  //   maxZoomHeight: 1800,
+                  //   initZoom: 0.5,
+                  //   enableScroll: false,
+                  // child: OnlyOnePointerRecognizerWidget(
+                  child: Transform.scale(
+                    scale: currScale,
+                    alignment: Alignment.topLeft,
+                    child: Listener(
+                      onPointerDown: (event) {
+                        _pointerMap[event.pointer] = PointerMap(
+                            vm.Vector2(
+                                event.localPosition.dx, event.localPosition.dy),
+                            null,
+                            null);
+                        if (_pointerMap.length > 1) {
+                          CanvasState.zoom;
+                        } else if (canvasState == CanvasState.draw ||
+                            canvasState == CanvasState.erase) {
+                          lineStart = vm.Vector2(
+                              event.localPosition.dx - offset.dx,
+                              event.localPosition.dy - offset.dy);
+                        }
+                        setState(() {});
+                      },
+
+                      onPointerMove: (event) {
+                        try {
+                          _pointerMap[event.pointer]?.current = vm.Vector2(
+                              event.localPosition.dx, event.localPosition.dy);
+                        } catch (e) {
+                          print(e);
+                        }
+                        if (canvasState == CanvasState.zoom) {}
+                        setState(() {
+                          if (canvasState == CanvasState.pan) {
+                            offset += event.delta;
+                            print("Should move");
+                          } else if (canvasState == CanvasState.draw) {
+                            if (lineStart == null) {
+                              lineStart = vm.Vector2(
+                                  event.localPosition.dx - offset.dx,
+                                  event.localPosition.dy - offset.dy);
+                            } else {
+                              _currentLineFragments.add(LineFragment(
+                                lineStart!,
+                                vm.Vector2(event.localPosition.dx - offset.dx,
+                                    event.localPosition.dy - offset.dy),
+                              ));
+                              lineStart = vm.Vector2(
+                                  event.localPosition.dx - offset.dx,
+                                  event.localPosition.dy - offset.dy);
+                            }
+                          } else if (canvasState == CanvasState.erase) {
+                            _lineEraser = LineFragment(
+                              lineStart!,
+                              vm.Vector2(event.localPosition.dx - offset.dx,
+                                  event.localPosition.dy - offset.dy),
+                            );
+                            lineStart = vm.Vector2(
+                                event.localPosition.dx - offset.dx,
+                                event.localPosition.dy - offset.dy);
+                            for (int i = _paintElements!.length - 1;
+                                i >= 0;
+                                i--) {
+                              if (_paintElements![i]
+                                  .intersectAsSegments(_lineEraser)) {
+                                _paintElements!.removeAt(i);
+                              }
+                            }
+                          }
+                        });
+                      },
+                      onPointerUp: (event) => {
+                        _pointerMap.remove(event.pointer),
+                        if (canvasState == CanvasState.draw)
+                          {
+                            if (lineStart != null)
+                              {
+                                if (_currentLineFragments.isEmpty)
+                                  {
+                                    _paintElements!.add(Point(
+                                        lineStart!.x, lineStart!.y, paint))
+                                  }
+                                else
+                                  {
+                                    _paintElements!.add(Line(
+                                      _currentLineFragments,
+                                      paint,
+                                    )),
+                                    _currentLineFragments = []
+                                  }
+                              }
+                          },
+                        setState(() {})
+                      },
+                      // child: GestureDetector(
+
+                      //   onPanDown: (details) {
+                      //     setState(() {
+                      //       if (canvasState == CanvasState.draw ||
+                      //           canvasState == CanvasState.erase) {
+                      //         lineStart = vm.Vector2(
+                      //             details.localPosition.dx - offset.dx,
+                      //             details.localPosition.dy - offset.dy);
+                      //       }
+                      //     });
+                      //   },
+                      //   onPanUpdate: (details) {
+                      //     setState(() {
+                      //       if (canvasState == CanvasState.pan) {
+                      //         offset += details.delta;
+                      //       } else if (canvasState == CanvasState.draw) {
+                      //         if (lineStart == null) {
+                      //           lineStart = vm.Vector2(
+                      //               details.localPosition.dx - offset.dx,
+                      //               details.localPosition.dy - offset.dy);
+                      //         } else {
+                      //           _currentLineFragments.add(LineFragment(
+                      //             lineStart!,
+                      //             vm.Vector2(details.localPosition.dx - offset.dx,
+                      //                 details.localPosition.dy - offset.dy),
+                      //           ));
+                      //           lineStart = vm.Vector2(
+                      //               details.localPosition.dx - offset.dx,
+                      //               details.localPosition.dy - offset.dy);
+                      //         }
+                      //       } else if (canvasState == CanvasState.erase) {
+                      //         _lineEraser = LineFragment(
+                      //           lineStart!,
+                      //           vm.Vector2(details.localPosition.dx - offset.dx,
+                      //               details.localPosition.dy - offset.dy),
+                      //         );
+                      //         lineStart = vm.Vector2(
+                      //             details.localPosition.dx - offset.dx,
+                      //             details.localPosition.dy - offset.dy);
+                      //         for (int i = _paintElements.length - 1; i >= 0; i--) {
+                      //           if (_paintElements[i]
+                      //               .intersectAsSegments(_lineEraser)) {
+                      //             _paintElements.removeAt(i);
+                      //           }
+                      //         }
+                      //       }
+                      //     });
+                      //   },
+                      //   onPanEnd: (details) {
+                      //     if (canvasState == CanvasState.draw) {
+                      //       if (lineStart != null) {
+                      //         if (_currentLineFragments.isEmpty) {
+                      //           _paintElements
+                      //               .add(Point(lineStart!.x, lineStart!.y, paint));
+                      //         } else {
+                      //           _paintElements.add(Line(
+                      //             _currentLineFragments,
+                      //             paint,
+                      //           ));
+                      //           _currentLineFragments = [];
+                      //         }
+                      //       }
+                      //     }
+                      //     setState(() {});
+                      //   },
+                      child: SizedBox.expand(
+                        child: ClipRRect(
+                          child: CustomPaint(
+                              painter: CanvasCustomPainter(_paintElements!,
+                                  _currentLineFragments, offset, paint)),
+                        ),
+                      ),
+                    ),
+                    // ),
+                  ),
+                )
+              ],
             ),
-          )
-        ],
-      ),
     );
   }
 }
@@ -492,5 +658,32 @@ class OnlyOnePointerRecognizerWidget extends StatelessWidget {
               () => OnlyOnePointerRecognizer(),
               (OnlyOnePointerRecognizer instance) {})
     }, child: child);
+  }
+}
+
+class GoogleHttpClient extends IOClient {
+  Map<String, String> _headers;
+
+  GoogleHttpClient(this._headers) : super();
+
+  @override
+  Future<IOStreamedResponse> send(http.BaseRequest request) =>
+      super.send(request..headers.addAll(_headers));
+
+  @override
+  Future<http.Response> head(Uri url, {Map<String, String>? headers}) =>
+      super.head(url, headers: headers!..addAll(_headers));
+}
+
+class GoogleAuthClient extends http.BaseClient {
+  final Map<String, String> _headers;
+  final _client = new http.Client();
+
+  GoogleAuthClient(this._headers);
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) {
+    request.headers.addAll(_headers);
+    return _client.send(request);
   }
 }

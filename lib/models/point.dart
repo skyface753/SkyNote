@@ -19,6 +19,7 @@ class Point extends PaintElement {
 
   Map<String, dynamic> toJson() {
     return {
+      'type': 'Point',
       'x': x,
       'y': y,
       'paint': paintConverter.paintToJson(paint),

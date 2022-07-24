@@ -17,8 +17,10 @@ class Line extends PaintElement {
     }
   }
 
+  @override
   Map<String, dynamic> toJson() {
     return {
+      'type': 'Line',
       'fragments': _fragments.map((fragment) => fragment.toJson()).toList(),
       'paint': paintConverter.paintToJson(paint),
     };

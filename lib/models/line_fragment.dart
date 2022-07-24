@@ -11,7 +11,6 @@ class LineFragment {
   const LineFragment(this.a, this.b);
 
   void draw(Canvas canvas, Offset? offset, Paint paint) {
-    //TODO: OFFSET
     if (offset != null) {
       canvas.drawLine(Offset(a.x + offset.dx, a.y + offset.dy),
           Offset(b.x + offset.dx, b.y + offset.dy), paint);
@@ -25,6 +24,7 @@ class LineFragment {
   }
 
   Map<String, dynamic> toJson() => {
+        'type': 'LineFragment',
         'a': {'x': a.x, 'y': a.y},
         'b': {'x': b.x, 'y': b.y},
       };

@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "244156996836",
+    "project_id": "skynte-fcbcd",
+    "storage_bucket": "skynte-fcbcd.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:244156996836:android:26e8ae1461da155efb20f1",
+        "android_client_info": {
+          "package_name": "de.skyface753.skynote"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "244156996836-gc5icmv756fcmcbukk7kptcp6qcg0988.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBfS9_QuXWFQhTpjSiJ-gmsOS7IpnJXIOo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "244156996836-gc5icmv756fcmcbukk7kptcp6qcg0988.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "244156996836-79kchr7r10f2qnqln9b81v58dnmg38li.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "de.skyface753.skynote"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

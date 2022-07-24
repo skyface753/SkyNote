@@ -1,6 +1,8 @@
 import 'dart:ui';
 
+import 'package:skynote/models/line.dart';
 import 'package:skynote/models/line_fragment.dart';
+import 'package:skynote/models/point.dart';
 
 abstract class PaintElement {
   Paint paint;
@@ -15,4 +17,17 @@ abstract class PaintElement {
   bool intersectAsSegments(LineFragment lineEraser);
 
   Map<String, dynamic> toJson();
+
+  // From Json
+  static List<PaintElement> fromJson(List<dynamic> json) {
+    return json.map((e) {
+      if (e['type'] == 'Point') {
+        return Point.fromJson(e);
+      } else if (e['type'] == 'Line') {
+        return Line.fromJson(e);
+      } else {
+        throw Exception('Unknown type');
+      }
+    }).toList();
+  }
 }
