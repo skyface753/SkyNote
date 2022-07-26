@@ -18,8 +18,6 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/io_client.dart';
 import 'package:http/http.dart' as http;
 
-import 'package:flutter_onedrive/flutter_onedrive.dart';
-
 void main() {
   runApp(const MyApp());
 }
@@ -36,7 +34,7 @@ class MyApp extends StatelessWidget {
           primarySwatch: Colors.blue,
           visualDensity: VisualDensity.adaptivePlatformDensity,
         ),
-        home: InfiniteCanvasPage());
+        home: const InfiniteCanvasPage());
   }
 }
 
@@ -80,7 +78,7 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
   late LineFragment _lineEraser;
   Map<int, PointerMap> _pointerMap = {};
 
-  Offset offset = Offset(0, 0);
+  Offset offset = const Offset(0, 0);
 
   final paint = Paint()
     ..style = PaintingStyle.stroke
@@ -125,25 +123,32 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
     var noteBookJson = storage.getItem('noteBook');
     if (noteBookJson != null) {
       _noteBook = NoteBook.fromJson(noteBookJson);
-      _paintElements = _noteBook.sections[0].notes[0].elements;
+      int selectedSectionIndex = _noteBook.selectedSectionIndex ?? 0;
+      int selectedNoteIndex = _noteBook.selectedNoteIndex ?? 0;
+      try {
+        _paintElements = _noteBook
+            .sections[selectedSectionIndex].notes[selectedNoteIndex].elements;
+      } catch (e) {
+        _paintElements = null;
+      }
       setState(() {});
     } else {
       print("No data found");
     }
   }
 
-  Future<void> getDataFromStorage() async {
-    await storage.ready;
-    try {
-      Map<String, dynamic> notebookData = storage.getItem('Notebook');
-      if (notebookData != null && notebookData.isNotEmpty) {
-        _noteBook = NoteBook.fromJson(notebookData);
-      }
-    } catch (e) {
-      storage.deleteItem('Notebook');
-      print("No data in storage");
-    }
-  }
+  // Future<void> getDataFromStorage() async {
+  //   await storage.ready;
+  //   try {
+  //     Map<String, dynamic> notebookData = storage.getItem('Notebook');
+  //     if (notebookData != null && notebookData.isNotEmpty) {
+  //       _noteBook = NoteBook.fromJson(notebookData);
+  //     }
+  //   } catch (e) {
+  //     storage.deleteItem('Notebook');
+  //     print("No data in storage");
+  //   }
+  // }
 
   // List of items in our dropdown menu
   var colorItems = [
@@ -175,42 +180,315 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
   double currScale = 1;
   var scaffoldKey = GlobalKey<ScaffoldState>();
 
+  bool useMobileLayout = false;
+
+  String newNotebookName = "";
+  String newSectionName = "";
+  String newNoteName = "";
+
+  Widget mobileDrawer() {
+    return Drawer(
+      child: ListView(
+        children: <Widget>[
+          DrawerHeader(
+            decoration: BoxDecoration(
+              color: Colors.blue,
+            ),
+            child: Column(
+              children: <Widget>[
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    Text(
+                      "Notebook: ${_noteBook.name}",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.edit),
+                      onPressed: () {
+                        showDialog(
+                          context: context,
+                          builder: (context) {
+                            return AlertDialog(
+                              title: Text("Edit Notebook"),
+                              content: TextField(
+                                onChanged: (value) {
+                                  newNotebookName = value;
+                                },
+                                decoration: InputDecoration(
+                                  labelText:
+                                      "Notebook Name (" + _noteBook.name + ")",
+                                ),
+                              ),
+                              actions: <Widget>[
+                                FlatButton(
+                                  child: Text("Cancel"),
+                                  onPressed: () {
+                                    Navigator.of(context).pop();
+                                  },
+                                ),
+                                FlatButton(
+                                  child: Text("Save"),
+                                  onPressed: () {
+                                    setState(() {
+                                      _noteBook.name = newNotebookName;
+                                    });
+                                    Navigator.of(context).pop();
+                                  },
+                                ),
+                              ],
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ],
+                ),
+                Text(
+                  'Section: ${_noteBook.selectedSectionIndex}',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                  ),
+                ),
+                Text(
+                  'Note: ${_noteBook.selectedNoteIndex}',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                  ),
+                ),
+              ],
+            ),
+            // Text('Skynote'),
+          ),
+          _noteBook.selectedSectionIndex == null
+              ? Container()
+              : ElevatedButton(
+                  onPressed: () {
+                    setState(() {
+                      _noteBook.selectedSectionIndex = null;
+                    });
+                  },
+                  //TODO: Check that section is selected before continuing to draw
+                  child: const Text("Back to Section")),
+          _noteBook.selectedSectionIndex == null
+              ? ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: _noteBook.sections.length,
+                  itemBuilder: (drawercontext, index) {
+                    return ListTile(
+                      title: Text(_noteBook.sections[index].name),
+                      onTap: () {
+                        setState(() {
+                          _noteBook.selectedSectionIndex = index;
+                        });
+                      },
+                      trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                        IconButton(
+                          icon: Icon(Icons.delete),
+                          onPressed: () {
+                            setState(() {
+                              _noteBook.sections.removeAt(index);
+                            });
+                          },
+                        ),
+                        //Rename
+                        IconButton(
+                          icon: Icon(Icons.edit),
+                          onPressed: () {
+                            newSectionName = _noteBook.sections[index].name;
+                            showDialog(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                      title: Text(
+                                          "Rename Section (${_noteBook.sections[index].name})"),
+                                      content: TextField(
+                                        onChanged: (value) {
+                                          newSectionName = value;
+                                        },
+                                      ),
+                                      actions: <Widget>[
+                                        FlatButton(
+                                          child: Text("Cancel"),
+                                          onPressed: () {
+                                            Navigator.of(context).pop();
+                                          },
+                                        ),
+                                        FlatButton(
+                                          child: Text("Rename"),
+                                          onPressed: () {
+                                            setState(() {
+                                              _noteBook.sections[index].name =
+                                                  newSectionName;
+                                            });
+                                            Navigator.of(context).pop();
+                                          },
+                                        ),
+                                      ],
+                                    ));
+                          },
+                        ),
+                      ]),
+                    );
+                  },
+                )
+              :
+              //Notes
+              ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: _noteBook
+                      .sections[_noteBook.selectedSectionIndex!].notes.length,
+                  itemBuilder: (context, index) {
+                    return ListTile(
+                      title: Text(_noteBook
+                          .sections[_noteBook.selectedSectionIndex!]
+                          .notes[index]
+                          .name),
+                      onTap: () {
+                        setState(() {
+                          _noteBook.selectedNoteIndex = index;
+                          _paintElements = _noteBook
+                              .sections[_noteBook.selectedSectionIndex!]
+                              .notes[_noteBook.selectedNoteIndex!]
+                              .elements;
+                          // Close the drawer
+                          Navigator.pop(context);
+                        });
+                      },
+                      trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                        IconButton(
+                          icon: Icon(Icons.delete),
+                          onPressed: () {
+                            setState(() {
+                              _noteBook
+                                  .sections[_noteBook.selectedSectionIndex!]
+                                  .notes
+                                  .removeAt(index);
+                            });
+                          },
+                        ),
+                        //Rename
+                        IconButton(
+                          icon: Icon(Icons.edit),
+                          onPressed: () {
+                            newSectionName = _noteBook
+                                .sections[_noteBook.selectedSectionIndex!]
+                                .notes[index]
+                                .name;
+                            showDialog(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                      title: Text(
+                                          "Rename Note (${_noteBook.sections[_noteBook.selectedSectionIndex!].notes[index].name})"),
+                                      content: TextField(
+                                        onChanged: (value) {
+                                          newNoteName = value;
+                                        },
+                                      ),
+                                      actions: <Widget>[
+                                        FlatButton(
+                                          child: Text("Cancel"),
+                                          onPressed: () {
+                                            Navigator.of(context).pop();
+                                          },
+                                        ),
+                                        FlatButton(
+                                          child: Text("Rename"),
+                                          onPressed: () {
+                                            setState(() {
+                                              _noteBook
+                                                  .sections[_noteBook
+                                                      .selectedSectionIndex!]
+                                                  .notes[index]
+                                                  .name = newNoteName;
+                                            });
+                                            Navigator.of(context).pop();
+                                          },
+                                        ),
+                                      ],
+                                    ));
+                          },
+                        ),
+                      ]),
+                    );
+                  },
+                ),
+          _noteBook.selectedSectionIndex == null
+              ? ElevatedButton(
+                  child: const Text("Add Section"),
+                  onPressed: () {
+                    setState(() {
+                      _noteBook.addSection(NoteSection("New Section" +
+                          _noteBook.sections.length.toString()));
+                    });
+                  },
+                )
+              : ElevatedButton(
+                  child: const Text("Add Note"),
+                  onPressed: () {
+                    setState(() {
+                      _noteBook.sections[_noteBook.selectedSectionIndex!]
+                          .addNote(Note("New Note" +
+                              _noteBook
+                                  .sections[_noteBook.selectedSectionIndex!]
+                                  .notes
+                                  .length
+                                  .toString()));
+                    });
+                  },
+                ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    var shortestSide = MediaQuery.of(context).size.shortestSide;
+    useMobileLayout = shortestSide < 600;
+    if (useMobileLayout) {
+      print("Mobile Layout");
+    }
+
     return Scaffold(
-      drawer: Drawer(
-        child: ListView(
-          // Important: Remove any padding from the ListView.
-          padding: EdgeInsets.zero,
-          children: [
-            const DrawerHeader(
-              decoration: BoxDecoration(
-                color: Colors.blue,
-              ),
-              child: Text('Drawer Header'),
-            ),
-            ListTile(
-              title: const Text('Item 1'),
-              onTap: () {
-                // Update the state of the app.
-                // ...
-              },
-            ),
-            // ListTile(
-            //   title: const Text('Load'),
-            //   onTap: () {
-            //     var data = storage.getItem('Test');
-            //     print(data);
-            //     List<PaintElement> paintElements = PaintElement.fromJson(data);
-            //     setState(() {
-            //       _paintElements.clear();
-            //       _paintElements.addAll(paintElements);
-            //     });
-            //   },
-            // ),
-          ],
-        ),
-      ),
+      drawer: useMobileLayout ? mobileDrawer() : null,
+      // drawer: Drawer(
+      //   child: ListView(
+      //     // Important: Remove any padding from the ListView.
+      //     padding: EdgeInsets.zero,
+      //     children: [
+      //       const DrawerHeader(
+      //         decoration: BoxDecoration(
+      //           color: Colors.blue,
+      //         ),
+      //         child: Text('Drawer Header'),
+      //       ),
+      //       ListTile(
+      //         title: const Text('Item 1'),
+      //         onTap: () {
+      //           // Update the state of the app.
+      //           // ...
+      //         },
+      //       ),
+      //       // ListTile(
+      //       //   title: const Text('Load'),
+      //       //   onTap: () {
+      //       //     var data = storage.getItem('Test');
+      //       //     print(data);
+      //       //     List<PaintElement> paintElements = PaintElement.fromJson(data);
+      //       //     setState(() {
+      //       //       _paintElements.clear();
+      //       //       _paintElements.addAll(paintElements);
+      //       //     });
+      //       //   },
+      //       // ),
+      //     ],
+      //   ),
+      // ),
       key: scaffoldKey,
       floatingActionButton: FloatingActionButton(
         backgroundColor:
@@ -226,13 +504,18 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
         },
         child: Text(
           _canvasStateToString(canvasState),
-          style: TextStyle(color: Colors.white),
+          style: const TextStyle(color: Colors.white),
         ),
       ),
+      appBar: _paintElements == null
+          ? AppBar(
+              title: const Text('Skynote'),
+            )
+          : null,
       body: _paintElements == null
           ? Center(
               child: ElevatedButton(
-              child: Text('Create Empty Notebook'),
+              child: const Text('Create Empty Notebook'),
               onPressed: () {
                 setState(() {
                   _noteBook = NoteBook("Test");
@@ -243,7 +526,7 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
           : Column(
               children: <Widget>[
                 Container(
-                  padding: EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(8),
                   height: 70,
                   width: double.infinity,
                   color: Colors.grey,
@@ -252,7 +535,7 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                     child: Row(
                       children: <Widget>[
                         IconButton(
-                          icon: Icon(Icons.menu),
+                          icon: const Icon(Icons.menu),
                           onPressed: () =>
                               scaffoldKey.currentState?.openDrawer(),
                         ),
@@ -305,7 +588,7 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                                   value: strokeWidth,
                                   child: Text(
                                     '$strokeWidth',
-                                    style: TextStyle(
+                                    style: const TextStyle(
                                         fontSize: 20, color: Colors.black),
                                   ),
                                 ),
@@ -428,6 +711,7 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                       },
 
                       onPointerMove: (event) {
+                        print(event.kind);
                         try {
                           _pointerMap[event.pointer]?.current = vm.Vector2(
                               event.localPosition.dx, event.localPosition.dy);

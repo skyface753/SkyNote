@@ -3,6 +3,8 @@ import 'package:skynote/models/base_paint_element.dart';
 class NoteBook {
   String name;
   List<NoteSection> sections = [];
+  int? selectedSectionIndex;
+  int? selectedNoteIndex;
 
   NoteBook(
     this.name,
@@ -20,13 +22,17 @@ class NoteBook {
     return {
       'name': name,
       'sections': sections.map((section) => section.toJson()).toList(),
+      'selectedSectionIndex': selectedSectionIndex,
+      'selectedNoteIndex': selectedNoteIndex,
     };
   }
 
   NoteBook.fromJson(Map<String, dynamic> json)
       : name = json['name'],
         sections = List<NoteSection>.from(
-            json['sections'].map((section) => NoteSection.fromJson(section)));
+            json['sections'].map((section) => NoteSection.fromJson(section))),
+        selectedSectionIndex = json['selectedSectionIndex'],
+        selectedNoteIndex = json['selectedNoteIndex'];
 }
 
 class NoteSection {
