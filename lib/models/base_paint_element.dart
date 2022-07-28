@@ -1,7 +1,7 @@
 import 'dart:ui';
 
-import 'package:skynote/models/line.dart';
-import 'package:skynote/models/line_fragment.dart';
+import 'package:skynote/models/line_form.dart';
+import 'package:skynote/models/line_new.dart';
 import 'package:skynote/models/point.dart';
 
 abstract class PaintElement {
@@ -13,8 +13,8 @@ abstract class PaintElement {
           ..style = currpaint.style
           ..strokeCap = currpaint.strokeCap;
 
-  void draw(Canvas canvas, Offset offset);
-  bool intersectAsSegments(LineFragment lineEraser);
+  void draw(Canvas canvas, Offset offset, double width, double height);
+  bool intersectAsSegments(EraserLine lineEraser);
 
   Map<String, dynamic> toJson();
 
@@ -23,10 +23,14 @@ abstract class PaintElement {
     return json.map((e) {
       if (e['type'] == 'Point') {
         return Point.fromJson(e);
-      } else if (e['type'] == 'Line') {
-        return Line.fromJson(e);
+        // } else if (e['type'] == 'Line') {
+        //   return Line.fromJson(e);
+      } else if (e['type'] == 'LineNew') {
+        return LineNew.fromJson(e);
+      } else if (e['type'] == 'LineForm') {
+        return LineForm.fromJson(e);
       } else {
-        throw Exception('Unknown type');
+        throw Exception('Unknown type: ${e['type']}');
       }
     }).toList();
   }
