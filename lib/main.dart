@@ -600,6 +600,7 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
   }
 
   bool loading = true;
+  bool stylusAvailable = false;
 
   @override
   Widget build(BuildContext context) {
@@ -872,7 +873,14 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                                 event.localPosition.dx, event.localPosition.dy),
                           );
                           if (event.kind == PointerDeviceKind.stylus) {
-                            canvasState = CanvasState.draw;
+                            stylusAvailable = true;
+                            if (canvasState == CanvasState.pan) {
+                              canvasState = CanvasState.draw;
+                            }
+                          }
+                          if (event.kind == PointerDeviceKind.touch &&
+                              stylusAvailable) {
+                            canvasState = CanvasState.pan;
                           }
                           if (_pointerMap.length > 1) {
                             print("More than one pointer");
@@ -1019,7 +1027,7 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                         onPointerUp: (event) {
                           _pointerMap.remove(event.pointer);
                           if (canvasState == CanvasState.zoom &&
-                              _pointerMap.length == 0) {
+                              _pointerMap.isEmpty) {
                             canvasState = CanvasState.pan;
                           }
                           if (canvasState == CanvasState.draw) {
@@ -1039,6 +1047,13 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                                   print("Added a Point");
                                 });
                               }
+                            } else if (lineStart != null) {
+                              setState(() {
+                                _paintElements!.add(Point(
+                                    event.localPosition.dx - offset.dx,
+                                    event.localPosition.dy - offset.dy,
+                                    paint));
+                              });
                             }
                           } else if (canvasState == CanvasState.form) {
                             if (Forms.line == selectedForm) {
