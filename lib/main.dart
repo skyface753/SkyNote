@@ -1,25 +1,44 @@
+import 'dart:convert';
+import 'dart:io';
+import 'dart:math';
+import 'dart:typed_data';
+import 'package:flash/flash.dart';
+import 'package:image_picker/image_picker.dart';
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:localstorage/localstorage.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:skynote/appwrite.dart';
 import 'package:skynote/components/draw_menu.dart';
 import 'package:skynote/components/drawer.dart';
 import 'package:skynote/google_drive_search.dart';
 import 'package:skynote/models/base_paint_element.dart';
+import 'package:skynote/models/line.dart';
+import 'package:skynote/models/line_eraser.dart';
 import 'package:skynote/models/line_form.dart';
-import 'package:skynote/models/line_new.dart';
+import 'package:skynote/models/line_fragment.dart';
+import 'package:skynote/models/line_old.dart';
 // import 'package:skynote/models/line.dart';
 // import 'package:skynote/models/line_fragment.dart';
 import 'package:skynote/models/note_book.dart';
+import 'package:skynote/models/paint_image.dart';
 import 'package:skynote/models/point.dart';
 import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:google_sign_in/google_sign_in.dart' as signIn;
+import 'package:skynote/screens/login_screen.dart';
+import 'package:skynote/screens/notebook_selection_screen.dart';
 import 'package:vector_math/vector_math_64.dart' as vm;
 import 'package:firebase_core/firebase_core.dart';
+import 'package:zoom_widget/zoom_widget.dart';
 import 'firebase_options.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/io_client.dart';
 import 'package:http/http.dart' as http;
+import 'package:appwrite/appwrite.dart';
+
+String storageID = '62e2afd619bea62ecafd';
 
 void main() {
   runApp(const MyApp());
@@ -31,13 +50,20 @@ class MyApp extends StatelessWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
+    AppWriteCustom.initAppwrite();
     return MaterialApp(
         title: 'Flutter Demo',
         theme: ThemeData(
           primarySwatch: Colors.blue,
           visualDensity: VisualDensity.adaptivePlatformDensity,
         ),
-        home: const InfiniteCanvasPage());
+        routes: {
+          '/': (context) => NotebookSelectionScreen(),
+          '/login': (context) => LoginScreen(),
+          // '/notebook': (context) => InfiniteCanvasPage(),
+        },
+        debugShowCheckedModeBanner: false,
+        initialRoute: '/');
   }
 }
 
@@ -48,10 +74,8 @@ enum Forms { none, line, rectangle, circle, triangle }
 // enum Background { white, lines, checkered, black }
 
 class PointerMap {
-  vm.Vector2 start;
-  vm.Vector2? current;
-  vm.Vector2? end;
-  PointerMap(this.start, this.current, this.end);
+  vm.Vector2 lastPosition;
+  PointerMap(this.lastPosition);
 }
 
 String _canvasStateToString(CanvasState state) {
@@ -85,7 +109,9 @@ String _formsToString(Forms form) {
 }
 
 class InfiniteCanvasPage extends StatefulWidget {
-  const InfiniteCanvasPage({Key? key}) : super(key: key);
+  final String? noteBookId;
+  const InfiniteCanvasPage({Key? key, required this.noteBookId})
+      : super(key: key);
 
   @override
   InfiniteCanvasPageState createState() => InfiniteCanvasPageState();
@@ -97,18 +123,22 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
   // Background background = Background.lines;
 
   // List<LineFragment> _currentLineFragments = [];
-  LineNew? _currentLine;
+  Line? _currentLine;
   List<PaintElement>? _paintElements;
-  // vm.Vector2? lineStart;
+  vm.Vector2? lineStart;
 
   // late LineFragment _lineEraser;
-  late EraserLine _lineEraser;
+  LineEraser? _lineEraser;
   Map<int, PointerMap> _pointerMap = {};
+
+  late String oldNotebookName;
 
   //Forms
   LineForm? _lineForm;
 
   Offset offset = const Offset(0, 0);
+
+  Storage appwriteStorage = AppWriteCustom().getAppwriteStorage();
 
   final paint = Paint()
     ..style = PaintingStyle.stroke
@@ -120,57 +150,127 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
   // Initial Selected Value
   Color dropdownValueColor = Colors.indigo;
 
-  final LocalStorage storage = LocalStorage('some_key.json');
-
   @override
   void initState() {
-    // createTest();
-    getSavedData();
+    getNotebook();
+    // loading = false;
     super.initState();
   }
 
-  NoteBook _noteBook = NoteBook("TestBook", Background.white);
+  Future<void> getNotebook() async {
+    // Init new Notebook and Upload to AppWrite
+    if (widget.noteBookId == null) {
+      _noteBook = NoteBook("Neues Notizbuch", Background.white);
+      final file = await getLocalFile('neues_notizbuch.json');
+      file.writeAsStringSync(_noteBook.toString());
+      final inputFile = InputFile(path: file.path, filename: _noteBook.name);
 
-  void createTest() async {
-    NoteSection section = NoteSection("TestSection");
-    Note note = Note("TestNote");
-
-    section.addNote(note);
-    _noteBook.addSection(section);
-    await storage.ready;
-    _paintElements = note.elements;
-    setState(() {});
-  }
-
-  void saveData() async {
-    await storage.ready;
-    storage.setItem('noteBook', _noteBook.toJson());
-    print(_noteBook.toJson());
-  }
-
-  void setStateFromChild() {
-    setState(() {});
-  }
-
-  void getSavedData() async {
-    await storage.ready;
-    var noteBookJson = storage.getItem('noteBook');
-    if (noteBookJson != null) {
-      _noteBook = NoteBook.fromJson(noteBookJson);
-      int selectedSectionIndex = _noteBook.selectedSectionIndex ?? 0;
-      int selectedNoteIndex = _noteBook.selectedNoteIndex ?? 0;
-      try {
-        _paintElements = _noteBook
-            .sections[selectedSectionIndex].notes[selectedNoteIndex].elements;
-        selectedBackground = _noteBook.defaultBackground;
-      } catch (e) {
-        _paintElements = null;
-      }
+      _noteBook.appwriteFileId = await appwriteStorage
+          .createFile(bucketId: storageID, fileId: 'unique()', file: inputFile)
+          .then((value) => value.$id);
+      loading = false;
+      oldNotebookName = _noteBook.name;
       setState(() {});
-    } else {
-      print("No data found");
+      return;
     }
+    String notebookId = widget.noteBookId!;
+
+    Uint8List file = await appwriteStorage.getFileDownload(
+        bucketId: '62e2afd619bea62ecafd', fileId: notebookId);
+    print("File downloaded");
+    String fileContent = String.fromCharCodes(file);
+    print(fileContent);
+
+    _noteBook = NoteBook.fromJson(json.decode(fileContent));
+    _noteBook.appwriteFileId = notebookId;
+    oldNotebookName = _noteBook.name;
+
+    if (_noteBook.selectedSectionIndex != null &&
+        _noteBook.selectedNoteIndex != null) {
+      _paintElements = _noteBook.sections[_noteBook.selectedSectionIndex!]
+          .notes[_noteBook.selectedNoteIndex!].elements;
+    }
+    // _noteBook = NoteBook.fromString(notebookString);
+    // Map<String, dynamic> notebookJson = jsonDecode(notebookString);
+    // _noteBook = NoteBook.fromJson(notebookJson);
+
+    loading = false;
+    setState(() {});
   }
+
+  late NoteBook _noteBook;
+  // void createTest() async {
+  //   NoteSection section = NoteSection("TestSection");
+  //   Note note = Note("TestNote");
+
+  //   section.addNote(note);
+  //   _noteBook.addSection(section);
+  //   await storage.ready;
+  //   _paintElements = note.elements;
+  //   setState(() {});
+  // }
+
+  // void saveData() async {
+  //   await storage.ready;
+  //   storage.setItem('noteBook', _noteBook.toJson());
+  //   print(_noteBook.toJson());
+  // }
+
+  void saveToAppwrite() async {
+    // await loginToAppwriteTest();
+    //Notebook to File
+    final file = await getLocalFile(_noteBook.appwriteFileId ?? 'blub.json');
+    // try {
+    //   _noteBook.sections[_noteBook.selectedSectionIndex!]
+    //       .notes[_noteBook.selectedNoteIndex!].elements = _paintElements!;
+    // } catch (e) {
+    //   print(e);
+    // }
+    // List<int> bytes = utf8.encode(_noteBook.toString());
+    file.writeAsStringSync(_noteBook.toString());
+    final inputFile = InputFile(path: file.path, filename: _noteBook.name);
+    String fileId = _noteBook.appwriteFileId ?? 'unique()';
+    if (_noteBook.appwriteFileId != null && oldNotebookName != _noteBook.name) {
+      await appwriteStorage.deleteFile(bucketId: storageID, fileId: fileId);
+    }
+    var createdFile = await appwriteStorage.createFile(
+        bucketId: storageID, fileId: fileId, file: inputFile);
+    _noteBook.appwriteFileId = createdFile.$id;
+    oldNotebookName = _noteBook.name;
+    print("File saved");
+    showFlash(
+        context: context,
+        duration: Duration(seconds: 1),
+        builder: (_, controller) {
+          return Flash(
+              controller: controller,
+              position: FlashPosition.top,
+              behavior: FlashBehavior.floating,
+              child: FlashBar(
+                content: Text("Notizbuch gespeichert"),
+              ));
+        });
+  }
+
+  // void getSavedData() async {
+  //   await storage.ready;
+  //   var noteBookJson = storage.getItem('noteBook');
+  //   if (noteBookJson != null) {
+  //     _noteBook = NoteBook.fromJson(noteBookJson);
+  //     int selectedSectionIndex = _noteBook.selectedSectionIndex ?? 0;
+  //     int selectedNoteIndex = _noteBook.selectedNoteIndex ?? 0;
+  //     try {
+  //       _paintElements = _noteBook
+  //           .sections[selectedSectionIndex].notes[selectedNoteIndex].elements;
+  //       selectedBackground = _noteBook.defaultBackground;
+  //     } catch (e) {
+  //       _paintElements = null;
+  //     }
+  //     setState(() {});
+  //   } else {
+  //     print("No data found");
+  //   }
+  // }
 
   // Future<void> getDataFromStorage() async {
   //   await storage.ready;
@@ -230,6 +330,7 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
     10.0,
   ];
   double currScale = 1;
+  double? lastDistance;
   var scaffoldKey = GlobalKey<ScaffoldState>();
 
   bool useMobileLayout = false;
@@ -252,7 +353,7 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                   mainAxisSize: MainAxisSize.min,
                   children: <Widget>[
                     Text(
-                      "Notebook: ${_noteBook.name}",
+                      _noteBook.name,
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 24,
@@ -498,6 +599,8 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
     );
   }
 
+  bool loading = true;
+
   @override
   Widget build(BuildContext context) {
     var shortestSide = MediaQuery.of(context).size.shortestSide;
@@ -508,7 +611,9 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
 
     return Scaffold(
       //TODO: Tablet Drawer
-      drawer: useMobileLayout ? mobileDrawer() : mobileDrawer(),
+      drawer: loading == true
+          ? null
+          : (useMobileLayout ? mobileDrawer() : mobileDrawer()),
       key: scaffoldKey,
       floatingActionButton: FloatingActionButton(
         backgroundColor:
@@ -532,368 +637,452 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
               title: const Text('Skynote'),
             )
           : null,
-      body: _paintElements == null
+      body: loading == true || _noteBook == null
           ? Center(
-              child: ElevatedButton(
-              child: const Text('Create Empty Notebook'),
-              onPressed: () {
-                setState(() {
-                  _noteBook = NoteBook("Test", Background.white);
-                });
-                scaffoldKey.currentState!.openDrawer();
-              },
-            ))
-          : Column(
-              children: <Widget>[
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  height: 70,
-                  width: double.infinity,
-                  color: Colors.grey,
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: <Widget>[
-                        IconButton(
-                          icon: const Icon(Icons.menu),
-                          onPressed: () =>
-                              scaffoldKey.currentState?.openDrawer(),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.arrow_back),
-                          color: Colors.black,
-                          onPressed: () {
-                            if (_paintElements!.isNotEmpty) {
-                              _paintElements!.removeLast();
-                            }
-
-                            setState(() {});
-                          },
-                        ),
-                        DropdownButton(
-                          value: dropdownValueColor,
-                          items: colorItems
-                              .map(
-                                (color) => DropdownMenuItem(
-                                  value: color,
-                                  child: ColoredBox(
-                                    color: color,
-                                    child: const SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                    ),
-                                  ),
-                                ),
-                              )
-                              .toList(),
-                          onChanged: (Color? newValue) {
-                            dropdownValueColor = newValue!;
-                            paint.color = newValue;
-                            setState(() {});
-                          },
-                        ), // Background
-                        DropdownButton(
-                            items: backgroundItems.map((background) {
-                              return DropdownMenuItem(
-                                  value: background,
-                                  child: SizedBox(
-                                    height: 30,
-                                    width: 30,
-                                    child: CustomPaint(
-                                        painter: BackgroundPreview(background)),
-                                  ));
-                            }).toList(),
-                            value: selectedBackground,
-                            onChanged: (Background? newValue) {
-                              selectedBackground = newValue!;
-                              _noteBook.defaultBackground = newValue;
-                              setState(() {});
-                            }), // Background
-
-                        DropdownButton(
-                          value: dropdownValueStrokeWidth,
-                          items: strokeWidthItems
-                              .map(
-                                (strokeWidth) => DropdownMenuItem(
-                                  value: strokeWidth,
-                                  child: Text(
-                                    '$strokeWidth',
-                                    style: const TextStyle(
-                                        fontSize: 20, color: Colors.black),
-                                  ),
-                                ),
-                              )
-                              .toList(),
-                          onChanged: (double? newValue) {
-                            dropdownValueStrokeWidth = newValue!;
-                            paint.strokeWidth = newValue;
-                            setState(() {});
-                          },
-                          dropdownColor: Colors.white,
-                        ),
-                        DropdownButton(
-                            items: formItems.map((form) {
-                              return DropdownMenuItem(
-                                  value: form,
-                                  child: Text(
-                                    _formsToString(form),
-                                    style: const TextStyle(
-                                        fontSize: 20, color: Colors.black),
-                                  ));
-                            }).toList(),
-                            value: selectedForm,
-                            onChanged: (Forms? newValue) {
-                              if (newValue == Forms.none) {
-                                canvasState = CanvasState.draw;
-                              } else {
-                                canvasState = CanvasState.form;
-                              }
-                              selectedForm = newValue!;
-                              setState(() {});
-                            }),
-                        // Eraser Button
-                        IconButton(
-                          icon: const Icon(Icons.delete),
-                          color: CanvasState.erase == canvasState
-                              ? Colors.red
-                              : Colors.black,
-                          onPressed: () {
-                            if (canvasState == CanvasState.erase) {
-                              canvasState = CanvasState.draw;
-                            } else {
-                              canvasState = CanvasState.erase;
-                            }
-                            setState(() {});
-                          },
-                        ),
-                        //Save Button
-                        IconButton(
-                          icon: const Icon(Icons.save),
-                          color: Colors.black,
-                          onPressed: () {
-                            saveData();
-                          },
-                        ),
-                        // Zoom Button
-                        IconButton(
-                          icon: const Icon(Icons.zoom_in),
-                          color: Colors.black,
-                          onPressed: () {
-                            if (currScale < 4) {
-                              currScale += 0.5;
-                            }
-                            setState(() {});
-                          },
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.zoom_out),
-                          color: Colors.black,
-                          onPressed: () {
-                            if (currScale >= 1.5) {
-                              currScale -= 0.5;
-                            }
-                            setState(() {});
-                          },
-                        ),
-                        // Googlew Login
-                        IconButton(
-                          icon: const Icon(Icons.account_circle),
-                          color: Colors.black,
-                          onPressed: () async {
-                            // await Firebase.initializeApp(
-                            //   options: DefaultFirebaseOptions.currentPlatform,
-                            // );
-                            // final _googleSignIn = signIn.GoogleSignIn(
-                            //     clientId:
-                            //         "244156996836-79kchr7r10f2qnqln9b81v58dnmg38li.apps.googleusercontent.com",
-                            //     scopes: [drive.DriveApi.driveScope]);
-
-                            // //         _googleSignIn.sc
-                            // // _googleSignIn
-                            // //   ..standard(scopes: );
-                            // final signIn.GoogleSignInAccount? account =
-                            //     await _googleSignIn.signIn();
-                            // print("User account $account");
-                          },
-                        ),
-                      ],
-                    ),
+              child: CircularProgressIndicator(),
+            )
+          : _paintElements == null
+              ? Center(
+                  child: ElevatedButton(
+                    child: const Text("Create Section"),
+                    onPressed: () {
+                      scaffoldKey.currentState?.openDrawer();
+                    },
                   ),
-                ),
-                Expanded(
-                  // child: Zoom(
-                  //   maxZoomHeight: 1800,
-                  //   maxZoomWidth: 1800,
-                  //   enableScroll: false,
-                  // child: Zoom(
-                  //   maxZoomWidth: 1800,
-                  //   maxZoomHeight: 1800,
-                  //   initZoom: 0.5,
-                  //   enableScroll: false,
-                  // child: OnlyOnePointerRecognizerWidget(
-                  child: Transform.scale(
-                    scale: currScale,
-                    alignment: Alignment.topLeft,
-                    child: Listener(
-                      onPointerDown: (event) {
-                        _pointerMap[event.pointer] = PointerMap(
+                )
+              : Column(
+                  children: <Widget>[
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      height: 70,
+                      width: double.infinity,
+                      color: Colors.grey,
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: <Widget>[
+                            IconButton(
+                              icon: const Icon(Icons.menu),
+                              onPressed: () =>
+                                  scaffoldKey.currentState?.openDrawer(),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.arrow_back),
+                              color: Colors.black,
+                              onPressed: () {
+                                if (_paintElements!.isNotEmpty) {
+                                  _paintElements!.removeLast();
+                                }
+
+                                setState(() {});
+                              },
+                            ),
+                            DropdownButton(
+                              value: dropdownValueColor,
+                              items: colorItems
+                                  .map(
+                                    (color) => DropdownMenuItem(
+                                      value: color,
+                                      child: ColoredBox(
+                                        color: color,
+                                        child: const SizedBox(
+                                          width: 20,
+                                          height: 20,
+                                        ),
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged: (Color? newValue) {
+                                dropdownValueColor = newValue!;
+                                paint.color = newValue;
+                                setState(() {});
+                              },
+                            ), // Background
+                            DropdownButton(
+                                items: backgroundItems.map((background) {
+                                  return DropdownMenuItem(
+                                      value: background,
+                                      child: SizedBox(
+                                        height: 30,
+                                        width: 30,
+                                        child: CustomPaint(
+                                            painter:
+                                                BackgroundPreview(background)),
+                                      ));
+                                }).toList(),
+                                value: selectedBackground,
+                                onChanged: (Background? newValue) {
+                                  selectedBackground = newValue!;
+                                  _noteBook.defaultBackground = newValue;
+                                  setState(() {});
+                                }), // Background
+
+                            DropdownButton(
+                              value: dropdownValueStrokeWidth,
+                              items: strokeWidthItems
+                                  .map(
+                                    (strokeWidth) => DropdownMenuItem(
+                                      value: strokeWidth,
+                                      child: Text(
+                                        '$strokeWidth',
+                                        style: const TextStyle(
+                                            fontSize: 20, color: Colors.black),
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged: (double? newValue) {
+                                dropdownValueStrokeWidth = newValue!;
+                                paint.strokeWidth = newValue;
+                                setState(() {});
+                              },
+                              dropdownColor: Colors.white,
+                            ),
+                            DropdownButton(
+                                items: formItems.map((form) {
+                                  return DropdownMenuItem(
+                                      value: form,
+                                      child: Text(
+                                        _formsToString(form),
+                                        style: const TextStyle(
+                                            fontSize: 20, color: Colors.black),
+                                      ));
+                                }).toList(),
+                                value: selectedForm,
+                                onChanged: (Forms? newValue) {
+                                  if (newValue == Forms.none) {
+                                    canvasState = CanvasState.draw;
+                                  } else {
+                                    canvasState = CanvasState.form;
+                                  }
+                                  selectedForm = newValue!;
+                                  setState(() {});
+                                }),
+                            // Eraser Button
+                            IconButton(
+                              icon: const Icon(Icons.delete),
+                              color: CanvasState.erase == canvasState
+                                  ? Colors.red
+                                  : Colors.black,
+                              onPressed: () {
+                                if (canvasState == CanvasState.erase) {
+                                  canvasState = CanvasState.draw;
+                                } else {
+                                  canvasState = CanvasState.erase;
+                                }
+                                setState(() {});
+                              },
+                            ), //Add an Image
+                            IconButton(
+                                onPressed: () async {
+                                  print("Add Image");
+                                  final ImagePicker _picker = ImagePicker();
+                                  print("ImagePicker");
+                                  final XFile? image = await _picker.pickImage(
+                                      source: ImageSource.gallery);
+                                  print("Adding Image");
+                                  if (image != null) {
+                                    print("Image Selected");
+                                    InputFile inputFile =
+                                        InputFile(path: image.path);
+                                    var uploadedFile =
+                                        await appwriteStorage.createFile(
+                                            bucketId: '62e40e4e2d262cc2e179',
+                                            fileId: 'unique()',
+                                            file: inputFile);
+                                    print("File Uploaded");
+                                    PaintImage newPaintImage = PaintImage(
+                                        uploadedFile.$id,
+                                        -offset.dx,
+                                        -offset.dy,
+                                        paint);
+                                    _paintElements!.add(newPaintImage);
+                                    saveToAppwrite();
+                                    setState(() {});
+                                  } else {
+                                    print("Image is null");
+                                  }
+                                },
+                                icon: const Icon(Icons.add_photo_alternate)),
+                            //Save Button
+                            IconButton(
+                              icon: const Icon(Icons.save),
+                              color: Colors.black,
+                              onPressed: () {
+                                //TODO Manual Save
+                                print(_noteBook.toString());
+                                saveToAppwrite();
+                              },
+                            ),
+                            // Zoom Button
+                            IconButton(
+                              icon: const Icon(Icons.zoom_in),
+                              color: Colors.black,
+                              onPressed: () {
+                                if (currScale < 4) {
+                                  currScale += 0.5;
+                                }
+                                setState(() {});
+                              },
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.zoom_out),
+                              color: Colors.black,
+                              onPressed: () {
+                                if (currScale >= 1.5) {
+                                  currScale -= 0.5;
+                                }
+                                setState(() {});
+                              },
+                            ),
+                            // Googlew Login
+                            IconButton(
+                              icon: const Icon(Icons.account_circle),
+                              color: Colors.black,
+                              onPressed: () async {
+                                // await Firebase.initializeApp(
+                                //   options: DefaultFirebaseOptions.currentPlatform,
+                                // );
+                                // final _googleSignIn = signIn.GoogleSignIn(
+                                //     clientId:
+                                //         "244156996836-79kchr7r10f2qnqln9b81v58dnmg38li.apps.googleusercontent.com",
+                                //     scopes: [drive.DriveApi.driveScope]);
+
+                                // //         _googleSignIn.sc
+                                // // _googleSignIn
+                                // //   ..standard(scopes: );
+                                // final signIn.GoogleSignInAccount? account =
+                                //     await _googleSignIn.signIn();
+                                // print("User account $account");
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                        child: Transform.scale(
+                      scale: currScale,
+                      alignment: Alignment.topLeft,
+                      child: Listener(
+                        onPointerDown: (event) {
+                          _pointerMap[event.pointer] = PointerMap(
                             vm.Vector2(
                                 event.localPosition.dx, event.localPosition.dy),
-                            null,
-                            null);
-                        if (_pointerMap.length > 1) {
-                          CanvasState.zoom;
-                        } else if (canvasState == CanvasState.draw) {
-                          _currentLine = LineNew(
-                              event.localPosition.dx - offset.dx,
-                              event.localPosition.dy - offset.dy,
-                              paint);
-                        } else if (canvasState == CanvasState.erase) {
-                          _lineEraser = EraserLine(LNPoint(
-                              event.localPosition.dx - offset.dx,
-                              event.localPosition.dy - offset.dy));
-                        } else if (canvasState == CanvasState.form) {
-                          if (Forms.line == selectedForm) {
-                            _lineForm = LineForm(
-                                LNPoint(event.localPosition.dx - offset.dx,
-                                    event.localPosition.dy - offset.dy),
-                                LNPoint(event.localPosition.dx - offset.dx,
-                                    event.localPosition.dy - offset.dy),
-                                paint);
+                          );
+                          if (event.kind == PointerDeviceKind.stylus) {
+                            canvasState = CanvasState.draw;
                           }
-                        }
-                        setState(() {});
-                      },
-                      onPointerMove: (event) {
-                        try {
-                          _pointerMap[event.pointer]?.current = vm.Vector2(
-                              event.localPosition.dx, event.localPosition.dy);
-                        } catch (e) {
-                          print(e);
-                        }
-                        if (canvasState == CanvasState.zoom) {
-                          return;
-                        }
-                        setState(() {
-                          if (canvasState == CanvasState.pan) {
-                            offset += event.delta;
-                            if (offset.dx > 0) {
-                              offset = Offset(0, offset.dy);
-                            }
-                            // print("Should move");
+                          if (_pointerMap.length > 1) {
+                            print("More than one pointer");
+                            canvasState = CanvasState.zoom;
                           } else if (canvasState == CanvasState.draw) {
-                            if (_currentLine == null) {
-                              _currentLine = LineNew(
-                                  event.localPosition.dx - offset.dx,
-                                  event.localPosition.dy - offset.dy,
-                                  paint);
-                            } else {
-                              _currentLine!.addPoint(
-                                  event.localPosition.dx - offset.dx,
-                                  event.localPosition.dy - offset.dy);
-                            }
+                            lineStart = vm.Vector2(
+                                event.localPosition.dx - offset.dx,
+                                event.localPosition.dy - offset.dy);
+
+                            // _currentLineFragment = LineFragment(
+                            //     event.localPosition.dx - offset.dx,
+                            //     event.localPosition.dy - offset.dy,
+                            //     paint);
                           } else if (canvasState == CanvasState.erase) {
-                            if (_lineEraser == null) {
-                              _lineEraser = EraserLine(LNPoint(
-                                  event.localPosition.dx - offset.dx,
-                                  event.localPosition.dy - offset.dy));
-                            } else {
-                              _lineEraser.nextPoint(
-                                  event.localPosition.dx - offset.dx,
-                                  event.localPosition.dy - offset.dy);
+                            //TODO Performance
+                            _lineEraser = LineEraser(
+                              vm.Vector2(event.localPosition.dx - offset.dx,
+                                  event.localPosition.dy - offset.dy),
+                              vm.Vector2(event.localPosition.dx - offset.dx,
+                                  event.localPosition.dy - offset.dy),
+                            );
+                            // _lineEraser = EraserLine(LNPoint(
+                            //     event.localPosition.dx - offset.dx,
+                            //     event.localPosition.dy - offset.dy));
+                          } else if (canvasState == CanvasState.form) {
+                            if (Forms.line == selectedForm) {
+                              _lineForm = LineForm(
+                                  vm.Vector2(event.localPosition.dx - offset.dx,
+                                      event.localPosition.dy - offset.dy),
+                                  vm.Vector2(event.localPosition.dx - offset.dx,
+                                      event.localPosition.dy - offset.dy),
+                                  paint);
+                              // _lineForm = LineForm(
+                              //     LNPoint(event.localPosition.dx - offset.dx,
+                              //         event.localPosition.dy - offset.dy),
+                              //     LNPoint(event.localPosition.dx - offset.dx,
+                              //         event.localPosition.dy - offset.dy),
+                              //     paint);
                             }
-                            for (int i = _paintElements!.length - 1;
-                                i >= 0;
-                                i--) {
-                              if (_paintElements![i]
-                                  .intersectAsSegments(_lineEraser)) {
-                                _paintElements!.removeAt(i);
+                          }
+                          setState(() {});
+                        },
+                        onPointerMove: (event) {
+                          if (canvasState == CanvasState.zoom) {
+                            double currPosX = event.localPosition.dx;
+                            double currPosY = event.localPosition.dy;
+                            double lastPosX =
+                                _pointerMap[event.pointer]!.lastPosition.x;
+                            double lastPosY =
+                                _pointerMap[event.pointer]!.lastPosition.y;
+                            // Distace between the two points
+                            // d = sqrt((x2 - x1)^2 + (y2 - y1)^2)
+                            double distance = sqrt(pow(currPosX - lastPosX, 2) +
+                                pow(currPosY - lastPosY, 2));
+                            print("Distance: $distance");
+                            currScale += distance / 100;
+                            setState(() {});
+                            try {
+                              _pointerMap[event.pointer]!.lastPosition =
+                                  vm.Vector2(event.localPosition.dx,
+                                      event.localPosition.dy);
+                            } catch (e) {
+                              print(e);
+                            }
+                            return;
+                          }
+                          setState(() {
+                            if (canvasState == CanvasState.pan) {
+                              offset += event.delta;
+                              if (offset.dx > 0) {
+                                offset = Offset(0, offset.dy);
+                              }
+                              // print("Should move");
+                            } else if (canvasState == CanvasState.draw) {
+                              if (lineStart == null) {
+                                lineStart = vm.Vector2(
+                                    event.localPosition.dx - offset.dx,
+                                    event.localPosition.dy - offset.dy);
+                                // _currentLine = LineNew(
+                                //     event.localPosition.dx - offset.dx,
+                                //     event.localPosition.dy - offset.dy,
+                                //     paint);
+                              } else {
+                                _currentLine ??= Line(paint);
+                                _currentLine!.addFragment(LineFragment(
+                                    lineStart!,
+                                    vm.Vector2(
+                                        event.localPosition.dx - offset.dx,
+                                        event.localPosition.dy - offset.dy)));
+                                lineStart = vm.Vector2(
+                                    event.localPosition.dx - offset.dx,
+                                    event.localPosition.dy - offset.dy);
+                              }
+                            } else if (canvasState == CanvasState.erase) {
+                              if (_lineEraser == null) {
+                                _lineEraser = LineEraser(
+                                    lineStart!,
+                                    vm.Vector2(
+                                        event.localPosition.dx - offset.dx,
+                                        event.localPosition.dy - offset.dy));
+                                // _lineEraser = EraserLine(LNPoint(
+                                //     event.localPosition.dx - offset.dx,
+                                //     event.localPosition.dy - offset.dy));
+                              } else {
+                                _lineEraser!.nextPoint(
+                                    event.localPosition.dx - offset.dx,
+                                    event.localPosition.dy - offset.dy);
+
+                                // _lineEraser!.a = _lineEraser!.b;
+                                // _lineEraser!.b = vm.Vector2(
+                                //     event.localPosition.dx - offset.dx,
+                                //     event.localPosition.dy - offset.dy);
+                              }
+                              for (int i = _paintElements!.length - 1;
+                                  i >= 0;
+                                  i--) {
+                                if (_paintElements![i]
+                                    .intersectAsSegments(_lineEraser!)) {
+                                  _paintElements!.removeAt(i);
+                                }
+                              }
+                            } else if (canvasState == CanvasState.form) {
+                              if (Forms.line == selectedForm) {
+                                if (_lineForm == null) {
+                                  _lineForm = LineForm(
+                                      vm.Vector2(
+                                          event.localPosition.dx - offset.dx,
+                                          event.localPosition.dy - offset.dy),
+                                      vm.Vector2(
+                                          event.localPosition.dx - offset.dx,
+                                          event.localPosition.dy - offset.dy),
+                                      paint);
+                                  print("Line Form was null");
+                                } else {
+                                  _lineForm!.setEndpoint(
+                                      event.localPosition.dx - offset.dx,
+                                      event.localPosition.dy - offset.dy);
+                                  print("Line Form was not null");
+                                }
+                              }
+                            }
+                          });
+                        },
+                        onPointerUp: (event) {
+                          _pointerMap.remove(event.pointer);
+                          if (canvasState == CanvasState.zoom &&
+                              _pointerMap.length == 0) {
+                            canvasState = CanvasState.pan;
+                          }
+                          if (canvasState == CanvasState.draw) {
+                            if (_currentLine != null) {
+                              if (_currentLine!.fragments.length > 1) {
+                                setState(() {
+                                  _paintElements!.add(_currentLine!);
+                                  _currentLine = null;
+                                });
+                              } else if (_currentLine!.fragments.length == 1) {
+                                setState(() {
+                                  _paintElements!.add(Point(
+                                      event.localPosition.dx - offset.dx,
+                                      event.localPosition.dy - offset.dy,
+                                      paint));
+                                  _currentLine = null;
+                                  print("Added a Point");
+                                });
                               }
                             }
                           } else if (canvasState == CanvasState.form) {
                             if (Forms.line == selectedForm) {
-                              if (_lineForm == null) {
-                                _lineForm = LineForm(
-                                    LNPoint(event.localPosition.dx - offset.dx,
-                                        event.localPosition.dy - offset.dy),
-                                    LNPoint(event.localPosition.dx - offset.dx,
-                                        event.localPosition.dy - offset.dy),
-                                    paint);
-                                print("Line Form was null");
-                              } else {
+                              if (_lineForm != null) {
                                 _lineForm!.setEndpoint(
                                     event.localPosition.dx - offset.dx,
                                     event.localPosition.dy - offset.dy);
-                                print("Line Form was not null");
+                                setState(() {
+                                  _paintElements!.add(_lineForm!);
+                                  _lineForm = null;
+                                  print("Added a Line Form");
+                                });
+                                _lineForm = null;
+                              } else {
+                                print("Line form is null");
                               }
                             }
                           }
-                        });
-                      },
-                      onPointerUp: (event) {
-                        _pointerMap.remove(event.pointer);
-                        if (canvasState == CanvasState.draw) {
-                          if (_currentLine != null) {
-                            if (_currentLine!.pointCount > 1) {
-                              setState(() {
-                                _paintElements!.add(_currentLine!);
-                                _currentLine = null;
-                              });
-                            } else if (_currentLine!.pointCount == 1) {
-                              setState(() {
-                                _paintElements!.add(Point(
-                                    event.localPosition.dx - offset.dx,
-                                    event.localPosition.dy - offset.dy,
-                                    paint));
-                                _currentLine = null;
-                                print("Added a Point");
-                              });
-                            }
-                          }
-                        } else if (canvasState == CanvasState.form) {
-                          if (Forms.line == selectedForm) {
-                            if (_lineForm != null) {
-                              _lineForm!.setEndpoint(
-                                  event.localPosition.dx - offset.dx,
-                                  event.localPosition.dy - offset.dy);
-                              setState(() {
-                                _paintElements!.add(_lineForm!);
-                                _lineForm = null;
-                                print("Added a Line Form");
-                              });
-                              _lineForm = null;
-                            } else {
-                              print("Line form is null");
-                            }
-                          }
-                        }
-                        // setState(() {})
-                      },
-                      child: SizedBox.expand(
-                        child: ClipRRect(
-                          child: CustomPaint(
-                            foregroundPainter: CanvasCustomPainter(
-                                _paintElements!,
-                                _currentLine,
-                                _lineForm,
-                                offset,
-                                paint),
-                            // painter: BackgroundPainter(offset),
-                            willChange: false,
+                          // setState(() {})
+                        },
+                        child: SizedBox.expand(
+                          child: ClipRRect(
                             child: CustomPaint(
-                              painter:
-                                  BackgroundPainter(offset, selectedBackground),
+                              foregroundPainter: CanvasCustomPainter(
+                                  _paintElements!,
+                                  _currentLine,
+                                  _lineForm,
+                                  offset,
+                                  paint),
+                              // painter: BackgroundPainter(offset),
                               willChange: false,
+                              child: CustomPaint(
+                                painter: BackgroundPainter(
+                                    offset, selectedBackground),
+                                willChange: false,
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                    // ),
-                  ),
-                )
-              ],
-            ),
+                      // ),
+                    ))
+                  ],
+                ),
     );
   }
 }
@@ -991,7 +1180,7 @@ class BackgroundPreview extends CustomPainter {
 }
 
 class CanvasCustomPainter extends CustomPainter {
-  final LineNew? _currentDrawingLine;
+  final Line? _currentDrawingLine;
 
   final List<PaintElement> _paintElements;
   Offset offset;
@@ -1030,32 +1219,32 @@ class CanvasCustomPainter extends CustomPainter {
   @override
   bool shouldRepaint(CanvasCustomPainter oldDelegate) {
     return true;
-    if (oldDelegate.paintElementsCount != _paintElements.length ||
-        oldDelegate.offset != offset) {
-      print("Should Repaint 1");
-      return true;
-    } else {
-      if (oldDelegate._currentDrawingLine != null &&
-          _currentDrawingLine != null) {
-        if (oldDelegate._currentDrawingLine!.equals(_currentDrawingLine!)) {
-          print("Should Repaint 2");
-          return true;
-        }
-      }
-      print("Should not Repaint: " +
-          oldDelegate._paintElements.length.toString() +
-          " " +
-          _paintElements.length.toString() +
-          " " +
-          oldDelegate.offset.toString() +
-          " " +
-          offset.toString());
-      print("Count: " +
-          paintElementsCount.toString() +
-          " " +
-          _paintElements.length.toString());
-      return false;
-    }
+    // if (oldDelegate.paintElementsCount != _paintElements.length ||
+    //     oldDelegate.offset != offset) {
+    //   print("Should Repaint 1");
+    //   return true;
+    // } else {
+    //   if (oldDelegate._currentDrawingLine != null &&
+    //       _currentDrawingLine != null) {
+    //     if (oldDelegate._currentDrawingLine!.equals(_currentDrawingLine!)) {
+    //       print("Should Repaint 2");
+    //       return true;
+    //     }
+    //   }
+    //   print("Should not Repaint: " +
+    //       oldDelegate._paintElements.length.toString() +
+    //       " " +
+    //       _paintElements.length.toString() +
+    //       " " +
+    //       oldDelegate.offset.toString() +
+    //       " " +
+    //       offset.toString());
+    //   print("Count: " +
+    //       paintElementsCount.toString() +
+    //       " " +
+    //       _paintElements.length.toString());
+    //   return false;
+    // }
   }
 }
 
@@ -1129,4 +1318,15 @@ class GoogleAuthClient extends http.BaseClient {
     request.headers.addAll(_headers);
     return _client.send(request);
   }
+}
+
+Future<String> get _localPath async {
+  final directory = await getApplicationDocumentsDirectory();
+
+  return directory.path;
+}
+
+Future<File> getLocalFile(String notebookname) async {
+  final path = await _localPath;
+  return File('$path/$notebookname.json');
 }

@@ -1,16 +1,20 @@
 import 'dart:ui';
 
 import 'package:skynote/models/base_paint_element.dart';
-import 'package:skynote/models/line_new.dart';
+import 'package:skynote/models/line_eraser.dart';
+import 'package:skynote/models/line_fragment.dart';
+import 'package:skynote/models/line_old.dart';
+import 'package:skynote/models/point.dart';
+import 'package:vector_math/vector_math_64.dart' as vm;
 
 class LineForm extends PaintElement {
-  LNPoint startPoint;
-  LNPoint endPoint;
+  vm.Vector2 a;
+  vm.Vector2 b;
 
-  LineForm(this.startPoint, this.endPoint, Paint paint) : super(paint);
+  LineForm(this.a, this.b, Paint paint) : super(paint);
 
   void setEndpoint(double x, double y) {
-    endPoint = LNPoint(x, y);
+    b = vm.Vector2(x, y);
   }
 
   @override
@@ -27,12 +31,12 @@ class LineForm extends PaintElement {
     //     endPoint.y + offset.dy > offset.dy + height) {
     //   return;
     // }
-    canvas.drawLine(Offset(startPoint.x + offset.dx, startPoint.y + offset.dy),
-        Offset(endPoint.x + offset.dx, endPoint.y + offset.dy), paint);
+    canvas.drawLine(Offset(a.x + offset.dx, a.y + offset.dy),
+        Offset(b.x + offset.dx, b.y + offset.dy), paint);
   }
 
   @override
-  bool intersectAsSegments(EraserLine lineEraser) {
+  bool intersectAsSegments(LineEraser lineEraser) {
     // if (lineEraser.b == null) {
     return false;
     // }
@@ -54,14 +58,16 @@ class LineForm extends PaintElement {
   Map<String, dynamic> toJson() {
     return {
       'type': 'LineForm',
-      'a': startPoint.toJson(),
-      'b': endPoint.toJson(),
+      'aX': a.x,
+      'aY': a.y,
+      'bX': b.x,
+      'bY': b.y,
       'paint': paintConverter.paintToJson(paint),
     };
   }
 
   LineForm.fromJson(Map<String, dynamic> json)
-      : startPoint = LNPoint.fromJson(json['a']),
-        endPoint = LNPoint.fromJson(json['b']),
+      : a = vm.Vector2(json['aX'], json['aY']),
+        b = vm.Vector2(json['bX'], json['bY']),
         super(paintConverter.paintFromJson(json['paint']));
 }

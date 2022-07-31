@@ -2,7 +2,9 @@ import 'dart:ui';
 
 import 'package:skynote/helpers/paint_convert.dart';
 import 'package:skynote/models/base_paint_element.dart';
-import 'package:skynote/models/line_new.dart';
+import 'package:skynote/models/line_eraser.dart';
+import 'package:skynote/models/line_fragment.dart';
+import 'package:skynote/models/line_old.dart';
 
 var paintConverter = PaintConverter();
 
@@ -49,10 +51,7 @@ class Point extends PaintElement {
         super(paintConverter.paintFromJson(json['paint']));
 
   @override
-  bool intersectAsSegments(EraserLine lineEraser) {
-    if (lineEraser.b == null) {
-      return false;
-    }
+  bool intersectAsSegments(LineEraser lineEraser) {
     int testWidth = 5;
     int xAddPlus = (x + testWidth).toInt();
     int xAddMinus = (x - testWidth).toInt();
@@ -66,10 +65,10 @@ class Point extends PaintElement {
       print("Point intersects in A segment");
       return true;
     }
-    if (lineEraser.b!.x < xAddPlus &&
-        lineEraser.b!.x > xAddMinus &&
-        lineEraser.b!.y < yAddPlus &&
-        lineEraser.b!.y > yAddMinus) {
+    if (lineEraser.b.x < xAddPlus &&
+        lineEraser.b.x > xAddMinus &&
+        lineEraser.b.y < yAddPlus &&
+        lineEraser.b.y > yAddMinus) {
       print("Point intersects in B segment");
       return true;
     }

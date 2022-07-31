@@ -1,7 +1,10 @@
+import 'dart:convert';
+
 import 'package:skynote/main.dart';
 import 'package:skynote/models/base_paint_element.dart';
 
 class NoteBook {
+  String? appwriteFileId;
   String name;
   List<NoteSection> sections = [];
   int? selectedSectionIndex;
@@ -9,6 +12,11 @@ class NoteBook {
   Background defaultBackground;
 
   NoteBook(this.name, this.defaultBackground);
+
+  // Set appwriteFileId
+  void setAppwriteFileId(String appwriteFileId) {
+    this.appwriteFileId = appwriteFileId;
+  }
 
   addSection(NoteSection section) {
     sections.add(section);
@@ -20,6 +28,7 @@ class NoteBook {
 
   Map<String, dynamic> toJson() {
     return {
+      'appwriteFileId': appwriteFileId,
       'name': name,
       'sections': sections.map((section) => section.toJson()).toList(),
       'selectedSectionIndex': selectedSectionIndex,
@@ -29,12 +38,18 @@ class NoteBook {
   }
 
   NoteBook.fromJson(Map<String, dynamic> json)
-      : name = json['name'],
+      : appwriteFileId = json['appwriteFileId'],
+        name = json['name'],
         sections = List<NoteSection>.from(
             json['sections'].map((section) => NoteSection.fromJson(section))),
         selectedSectionIndex = json['selectedSectionIndex'],
         selectedNoteIndex = json['selectedNoteIndex'],
         defaultBackground = backgroundFromJson(json['defaultBackground']);
+
+  @override
+  toString() {
+    return jsonEncode(toJson());
+  }
 }
 
 enum Background { white, lines, checkered, black }
