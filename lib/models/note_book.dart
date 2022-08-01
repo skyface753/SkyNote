@@ -1,6 +1,6 @@
 import 'dart:convert';
-
-import 'package:skynote/main.dart';
+import 'package:crypto/crypto.dart';
+import 'package:flutter/material.dart';
 import 'package:skynote/models/base_paint_element.dart';
 
 class NoteBook {
@@ -37,11 +37,11 @@ class NoteBook {
     };
   }
 
-  NoteBook.fromJson(Map<String, dynamic> json)
+  NoteBook.fromJson(Map<String, dynamic> json, VoidCallback imageLoadCallback)
       : appwriteFileId = json['appwriteFileId'],
         name = json['name'],
-        sections = List<NoteSection>.from(
-            json['sections'].map((section) => NoteSection.fromJson(section))),
+        sections = List<NoteSection>.from(json['sections'].map(
+            (section) => NoteSection.fromJson(section, imageLoadCallback))),
         selectedSectionIndex = json['selectedSectionIndex'],
         selectedNoteIndex = json['selectedNoteIndex'],
         defaultBackground = backgroundFromJson(json['defaultBackground']);
@@ -49,6 +49,10 @@ class NoteBook {
   @override
   toString() {
     return jsonEncode(toJson());
+  }
+
+  String getHash() {
+    return sha512.convert(utf8.encode(toString())).toString();
   }
 }
 
@@ -107,10 +111,11 @@ class NoteSection {
     };
   }
 
-  NoteSection.fromJson(Map<String, dynamic> json)
+  NoteSection.fromJson(
+      Map<String, dynamic> json, VoidCallback imageLoadCallback)
       : name = json['name'],
-        notes =
-            List<Note>.from(json['notes'].map((note) => Note.fromJson(note)));
+        notes = List<Note>.from(json['notes']
+            .map((note) => Note.fromJson(note, imageLoadCallback)));
 }
 
 class Note {
@@ -136,7 +141,7 @@ class Note {
     };
   }
 
-  Note.fromJson(Map<String, dynamic> json)
+  Note.fromJson(Map<String, dynamic> json, VoidCallback paintImageCallback)
       : name = json['name'],
-        elements = PaintElement.fromJson(json['elements']);
+        elements = PaintElement.fromJson(json['elements'], paintImageCallback);
 }

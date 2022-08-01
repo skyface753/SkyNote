@@ -7,40 +7,37 @@ import 'package:vector_math/vector_math_64.dart' as vm;
 class LineFragment {
   final vm.Vector2 a;
   final vm.Vector2 b;
+  bool isRenderd = false;
 
-  const LineFragment(this.a, this.b);
+  LineFragment(this.a, this.b);
 
-  Path getPath(Offset offset) {
-    final path = Path();
-    path.moveTo(offset.dx + a.x, offset.dy + a.y);
-    path.lineTo(offset.dx + b.x, offset.dy + b.y);
-    return path;
+  Path? getPath(Offset offset, double width, double height) {
+    // Check if a and b ar in the display
+    if ((-offset.dx <= a.x &&
+            a.x <= -offset.dx + width &&
+            -offset.dy <= a.y &&
+            a.y <= -offset.dy + height) ||
+        (-offset.dx <= b.x &&
+            b.x <= -offset.dx + width &&
+            -offset.dy <= b.y &&
+            b.y <= -offset.dy + height)) {
+      final path = Path();
+      path.moveTo(offset.dx + a.x, offset.dy + a.y);
+      path.lineTo(offset.dx + b.x, offset.dy + b.y);
+      isRenderd = true;
+      return path;
+    } else {
+      isRenderd = false;
+      // print("LineFragment: a and b are not in the display");
+      return null;
+    }
   }
 
-  // vm.Vector2 project(vm.Vector2 p) {
-  //   final lineDir = (b - a).normalized();
-  //   var v = p - a;
-  //   var d = v.dot(lineDir);
-  //   return a + (lineDir * d);
-  // }
-
-  // double distanceToPoint(vm.Vector2 p) {
-  //   final d = (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x);
-
-  //   return d.sign * sqrt(d.abs());
-  // }
-
-  // double? slope() {
-  //   final x1 = a.x;
-  //   final y1 = a.y;
-  //   final x2 = b.x;
-  //   final y2 = b.y;
-
-  //   if (x1 == x2) return null;
-  //   return (y1 - y2) / (x1 - x2);
-  // }
-
   bool intersectAsSegments(LineEraser other) {
+    if (!isRenderd) {
+      print("Not in display => not intersect");
+      return false;
+    }
     LineFragment line1 = this;
     final p = line1.a;
     final p2 = line1.b;

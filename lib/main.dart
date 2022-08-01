@@ -5,35 +5,25 @@ import 'dart:typed_data';
 import 'package:flash/flash.dart';
 import 'package:image_picker/image_picker.dart';
 
+import 'package:crypto/crypto.dart';
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:localstorage/localstorage.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:skynote/appwrite.dart';
-import 'package:skynote/components/draw_menu.dart';
-import 'package:skynote/components/drawer.dart';
-import 'package:skynote/google_drive_search.dart';
 import 'package:skynote/models/base_paint_element.dart';
 import 'package:skynote/models/line.dart';
 import 'package:skynote/models/line_eraser.dart';
 import 'package:skynote/models/line_form.dart';
 import 'package:skynote/models/line_fragment.dart';
-import 'package:skynote/models/line_old.dart';
 // import 'package:skynote/models/line.dart';
 // import 'package:skynote/models/line_fragment.dart';
 import 'package:skynote/models/note_book.dart';
 import 'package:skynote/models/paint_image.dart';
 import 'package:skynote/models/point.dart';
-import 'package:googleapis/drive/v3.dart' as drive;
-import 'package:google_sign_in/google_sign_in.dart' as signIn;
 import 'package:skynote/screens/login_screen.dart';
 import 'package:skynote/screens/notebook_selection_screen.dart';
 import 'package:vector_math/vector_math_64.dart' as vm;
-import 'package:firebase_core/firebase_core.dart';
-import 'package:zoom_widget/zoom_widget.dart';
-import 'firebase_options.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/io_client.dart';
 import 'package:http/http.dart' as http;
 import 'package:appwrite/appwrite.dart';
@@ -181,109 +171,108 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
     String fileContent = String.fromCharCodes(file);
     print(fileContent);
 
-    _noteBook = NoteBook.fromJson(json.decode(fileContent));
+    _noteBook =
+        NoteBook.fromJson(json.decode(fileContent), (() => setState(() {})));
     _noteBook.appwriteFileId = notebookId;
     oldNotebookName = _noteBook.name;
 
     if (_noteBook.selectedSectionIndex != null &&
         _noteBook.selectedNoteIndex != null) {
-      _paintElements = _noteBook.sections[_noteBook.selectedSectionIndex!]
-          .notes[_noteBook.selectedNoteIndex!].elements;
+      try {
+        _paintElements = _noteBook.sections[_noteBook.selectedSectionIndex!]
+            .notes[_noteBook.selectedNoteIndex!].elements;
+      } catch (e) {}
     }
-    // _noteBook = NoteBook.fromString(notebookString);
-    // Map<String, dynamic> notebookJson = jsonDecode(notebookString);
-    // _noteBook = NoteBook.fromJson(notebookJson);
 
     loading = false;
     setState(() {});
   }
 
-  late NoteBook _noteBook;
-  // void createTest() async {
-  //   NoteSection section = NoteSection("TestSection");
-  //   Note note = Note("TestNote");
-
-  //   section.addNote(note);
-  //   _noteBook.addSection(section);
-  //   await storage.ready;
-  //   _paintElements = note.elements;
-  //   setState(() {});
-  // }
-
-  // void saveData() async {
-  //   await storage.ready;
-  //   storage.setItem('noteBook', _noteBook.toJson());
-  //   print(_noteBook.toJson());
-  // }
-
-  void saveToAppwrite() async {
-    // await loginToAppwriteTest();
-    //Notebook to File
-    final file = await getLocalFile(_noteBook.appwriteFileId ?? 'blub.json');
-    // try {
-    //   _noteBook.sections[_noteBook.selectedSectionIndex!]
-    //       .notes[_noteBook.selectedNoteIndex!].elements = _paintElements!;
-    // } catch (e) {
-    //   print(e);
-    // }
-    // List<int> bytes = utf8.encode(_noteBook.toString());
-    file.writeAsStringSync(_noteBook.toString());
-    final inputFile = InputFile(path: file.path, filename: _noteBook.name);
-    String fileId = _noteBook.appwriteFileId ?? 'unique()';
-    if (_noteBook.appwriteFileId != null && oldNotebookName != _noteBook.name) {
-      await appwriteStorage.deleteFile(bucketId: storageID, fileId: fileId);
+  void verifyNotebook() async {
+    String? notebookId = _noteBook.appwriteFileId;
+    if (notebookId == null) {
+      showFlashTopBar("Notebook has no ID", false);
+      return;
     }
-    var createdFile = await appwriteStorage.createFile(
-        bucketId: storageID, fileId: fileId, file: inputFile);
-    _noteBook.appwriteFileId = createdFile.$id;
-    oldNotebookName = _noteBook.name;
-    print("File saved");
+
+    //AppWrite Notebook Hash
+    Uint8List file;
+    try {
+      file = await appwriteStorage.getFileDownload(
+          bucketId: '62e2afd619bea62ecafd', fileId: notebookId);
+      print("File downloaded (HASH now)");
+    } catch (e) {
+      showFlashTopBar("Error getting Notebook Hash Online", false);
+      return;
+    }
+    String fileContent = String.fromCharCodes(file);
+    var appwriteFileHash = sha512.convert(utf8.encode(fileContent)).toString();
+
+    //Local Notebook Hash
+    String localFileHash = _noteBook.getHash();
+    if (appwriteFileHash != localFileHash) {
+      showFlashTopBar(
+          "Notizbuch wurde geändert (Hash has changed - online)", false);
+      return;
+    } else {
+      //Test FromJson
+      try {
+        NoteBook testNoteBook =
+            NoteBook.fromJson(json.decode(fileContent), () {});
+        String testNotebookHash = testNoteBook.getHash();
+        if (testNotebookHash == localFileHash) {
+          showFlashTopBar("Notizbuch ist aktuell (Hash ist gleich)", true);
+        } else {
+          showFlashTopBar("Notizbuch Hash Error (Local)", false);
+        }
+      } catch (e) {
+        showFlashTopBar("Fehler beim Laden des Notizbuchs", false);
+        return;
+      }
+    }
+  }
+
+  void showFlashTopBar(String text, bool success) {
     showFlash(
         context: context,
-        duration: Duration(seconds: 1),
+        duration: const Duration(seconds: 1, milliseconds: 500),
         builder: (_, controller) {
           return Flash(
               controller: controller,
               position: FlashPosition.top,
               behavior: FlashBehavior.floating,
               child: FlashBar(
-                content: Text("Notizbuch gespeichert"),
+                content: Text(text,
+                    style:
+                        TextStyle(color: success ? Colors.green : Colors.red)),
               ));
         });
   }
 
-  // void getSavedData() async {
-  //   await storage.ready;
-  //   var noteBookJson = storage.getItem('noteBook');
-  //   if (noteBookJson != null) {
-  //     _noteBook = NoteBook.fromJson(noteBookJson);
-  //     int selectedSectionIndex = _noteBook.selectedSectionIndex ?? 0;
-  //     int selectedNoteIndex = _noteBook.selectedNoteIndex ?? 0;
-  //     try {
-  //       _paintElements = _noteBook
-  //           .sections[selectedSectionIndex].notes[selectedNoteIndex].elements;
-  //       selectedBackground = _noteBook.defaultBackground;
-  //     } catch (e) {
-  //       _paintElements = null;
-  //     }
-  //     setState(() {});
-  //   } else {
-  //     print("No data found");
-  //   }
-  // }
+  late NoteBook _noteBook;
 
-  // Future<void> getDataFromStorage() async {
-  //   await storage.ready;
-  //   try {
-  //     Map<String, dynamic> notebookData = storage.getItem('Notebook');
-  //     if (notebookData != null && notebookData.isNotEmpty) {
-  //       _noteBook = NoteBook.fromJson(notebookData);
-  //     }
-  //   } catch (e) {
-  //     storage.deleteItem('Notebook');
-  //     print("No data in storage");
-  //   }
-  // }
+  Future<bool> saveToAppwrite() async {
+    try {
+      final file = await getLocalFile(_noteBook.appwriteFileId ?? 'blub.json');
+      file.writeAsStringSync(_noteBook.toString());
+      final inputFile = InputFile(path: file.path, filename: _noteBook.name);
+      String fileId = _noteBook.appwriteFileId ?? 'unique()';
+      if (_noteBook.appwriteFileId != null &&
+          oldNotebookName != _noteBook.name) {
+        await appwriteStorage.deleteFile(bucketId: storageID, fileId: fileId);
+      }
+      var createdFile = await appwriteStorage.createFile(
+          bucketId: storageID, fileId: fileId, file: inputFile);
+      _noteBook.appwriteFileId = createdFile.$id;
+      oldNotebookName = _noteBook.name;
+      print("File saved");
+      showFlashTopBar("Notizbuch gespeichert", true);
+      return true;
+    } catch (e) {
+      showFlashTopBar("Fehler beim Speichern des Notizbuchs", false);
+      return false;
+    }
+  }
 
   // List of items in our dropdown menu
   List<Color> colorItems = [
@@ -344,7 +333,7 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
       child: ListView(
         children: <Widget>[
           DrawerHeader(
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               color: Colors.blue,
             ),
             child: Column(
@@ -354,37 +343,37 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                   children: <Widget>[
                     Text(
                       _noteBook.name,
-                      style: TextStyle(
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 24,
                       ),
                     ),
                     IconButton(
-                      icon: Icon(Icons.edit),
+                      icon: const Icon(Icons.edit),
                       onPressed: () {
                         showDialog(
                           context: context,
                           builder: (context) {
                             return AlertDialog(
-                              title: Text("Edit Notebook"),
+                              title: const Text("Edit Notebook"),
                               content: TextField(
                                 onChanged: (value) {
                                   newNotebookName = value;
                                 },
                                 decoration: InputDecoration(
                                   labelText:
-                                      "Notebook Name (" + _noteBook.name + ")",
+                                      "Notebook Name (${_noteBook.name})",
                                 ),
                               ),
                               actions: <Widget>[
-                                FlatButton(
-                                  child: Text("Cancel"),
+                                ElevatedButton(
+                                  child: const Text("Cancel"),
                                   onPressed: () {
                                     Navigator.of(context).pop();
                                   },
                                 ),
-                                FlatButton(
-                                  child: Text("Save"),
+                                ElevatedButton(
+                                  child: const Text("Save"),
                                   onPressed: () {
                                     setState(() {
                                       _noteBook.name = newNotebookName;
@@ -402,14 +391,14 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                 ),
                 Text(
                   'Section: ${_noteBook.selectedSectionIndex}',
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 24,
                   ),
                 ),
                 Text(
                   'Note: ${_noteBook.selectedNoteIndex}',
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 24,
                   ),
@@ -442,7 +431,7 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                       },
                       trailing: Row(mainAxisSize: MainAxisSize.min, children: [
                         IconButton(
-                          icon: Icon(Icons.delete),
+                          icon: const Icon(Icons.delete),
                           onPressed: () {
                             setState(() {
                               _noteBook.sections.removeAt(index);
@@ -451,7 +440,7 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                         ),
                         //Rename
                         IconButton(
-                          icon: Icon(Icons.edit),
+                          icon: const Icon(Icons.edit),
                           onPressed: () {
                             newSectionName = _noteBook.sections[index].name;
                             showDialog(
@@ -465,14 +454,14 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                                         },
                                       ),
                                       actions: <Widget>[
-                                        FlatButton(
-                                          child: Text("Cancel"),
+                                        ElevatedButton(
+                                          child: const Text("Cancel"),
                                           onPressed: () {
                                             Navigator.of(context).pop();
                                           },
                                         ),
-                                        FlatButton(
-                                          child: Text("Rename"),
+                                        ElevatedButton(
+                                          child: const Text("Rename"),
                                           onPressed: () {
                                             setState(() {
                                               _noteBook.sections[index].name =
@@ -514,7 +503,7 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                       },
                       trailing: Row(mainAxisSize: MainAxisSize.min, children: [
                         IconButton(
-                          icon: Icon(Icons.delete),
+                          icon: const Icon(Icons.delete),
                           onPressed: () {
                             setState(() {
                               _noteBook
@@ -526,7 +515,7 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                         ),
                         //Rename
                         IconButton(
-                          icon: Icon(Icons.edit),
+                          icon: const Icon(Icons.edit),
                           onPressed: () {
                             newSectionName = _noteBook
                                 .sections[_noteBook.selectedSectionIndex!]
@@ -543,14 +532,14 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                                         },
                                       ),
                                       actions: <Widget>[
-                                        FlatButton(
-                                          child: Text("Cancel"),
+                                        ElevatedButton(
+                                          child: const Text("Cancel"),
                                           onPressed: () {
                                             Navigator.of(context).pop();
                                           },
                                         ),
-                                        FlatButton(
-                                          child: Text("Rename"),
+                                        ElevatedButton(
+                                          child: const Text("Rename"),
                                           onPressed: () {
                                             setState(() {
                                               _noteBook
@@ -575,8 +564,8 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                   child: const Text("Add Section"),
                   onPressed: () {
                     setState(() {
-                      _noteBook.addSection(NoteSection("New Section" +
-                          _noteBook.sections.length.toString()));
+                      _noteBook.addSection(NoteSection(
+                          "New Section${_noteBook.sections.length}"));
                     });
                   },
                 )
@@ -585,12 +574,8 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                   onPressed: () {
                     setState(() {
                       _noteBook.sections[_noteBook.selectedSectionIndex!]
-                          .addNote(Note("New Note" +
-                              _noteBook
-                                  .sections[_noteBook.selectedSectionIndex!]
-                                  .notes
-                                  .length
-                                  .toString()));
+                          .addNote(Note(
+                              "New Note${_noteBook.sections[_noteBook.selectedSectionIndex!].notes.length}"));
                     });
                   },
                 ),
@@ -638,8 +623,8 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
               title: const Text('Skynote'),
             )
           : null,
-      body: loading == true || _noteBook == null
-          ? Center(
+      body: loading == true
+          ? const Center(
               child: CircularProgressIndicator(),
             )
           : _paintElements == null
@@ -778,9 +763,9 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                             IconButton(
                                 onPressed: () async {
                                   print("Add Image");
-                                  final ImagePicker _picker = ImagePicker();
+                                  final ImagePicker picker = ImagePicker();
                                   print("ImagePicker");
-                                  final XFile? image = await _picker.pickImage(
+                                  final XFile? image = await picker.pickImage(
                                       source: ImageSource.gallery);
                                   print("Adding Image");
                                   if (image != null) {
@@ -795,9 +780,10 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                                     print("File Uploaded");
                                     PaintImage newPaintImage = PaintImage(
                                         uploadedFile.$id,
-                                        -offset.dx,
-                                        -offset.dy,
-                                        paint);
+                                        vm.Vector2(-offset.dx, -offset.dy),
+                                        paint, () {
+                                      setState(() {});
+                                    });
                                     _paintElements!.add(newPaintImage);
                                     saveToAppwrite();
                                     setState(() {});
@@ -814,6 +800,14 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                                 //TODO Manual Save
                                 print(_noteBook.toString());
                                 saveToAppwrite();
+                              },
+                            ),
+                            //Verify Button
+                            IconButton(
+                              icon: const Icon(Icons.verified_user),
+                              color: Colors.black,
+                              onPressed: () {
+                                verifyNotebook();
                               },
                             ),
                             // Zoom Button
@@ -837,25 +831,16 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                                 setState(() {});
                               },
                             ),
-                            // Googlew Login
+                            // Back to Notebook List Screen
                             IconButton(
-                              icon: const Icon(Icons.account_circle),
+                              icon: const Icon(Icons
+                                  .logout), // Not sure if this is the right icon
                               color: Colors.black,
                               onPressed: () async {
-                                // await Firebase.initializeApp(
-                                //   options: DefaultFirebaseOptions.currentPlatform,
-                                // );
-                                // final _googleSignIn = signIn.GoogleSignIn(
-                                //     clientId:
-                                //         "244156996836-79kchr7r10f2qnqln9b81v58dnmg38li.apps.googleusercontent.com",
-                                //     scopes: [drive.DriveApi.driveScope]);
-
-                                // //         _googleSignIn.sc
-                                // // _googleSignIn
-                                // //   ..standard(scopes: );
-                                // final signIn.GoogleSignInAccount? account =
-                                //     await _googleSignIn.signIn();
-                                // print("User account $account");
+                                //TODO Show loading dialog while saving
+                                if (await saveToAppwrite()) {
+                                  Navigator.pushReplacementNamed(context, "/");
+                                }
                               },
                             ),
                           ],
@@ -947,23 +932,27 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                             }
                             return;
                           }
-                          setState(() {
-                            if (canvasState == CanvasState.pan) {
+                          if (canvasState == CanvasState.pan) {
+                            setState(() {
                               offset += event.delta;
                               if (offset.dx > 0) {
                                 offset = Offset(0, offset.dy);
                               }
-                              // print("Should move");
-                            } else if (canvasState == CanvasState.draw) {
-                              if (lineStart == null) {
-                                lineStart = vm.Vector2(
-                                    event.localPosition.dx - offset.dx,
-                                    event.localPosition.dy - offset.dy);
-                                // _currentLine = LineNew(
-                                //     event.localPosition.dx - offset.dx,
-                                //     event.localPosition.dy - offset.dy,
-                                //     paint);
-                              } else {
+                              if (offset.dy > 0) {
+                                offset = Offset(offset.dx, 0);
+                              }
+                            });
+                          } else if (canvasState == CanvasState.draw) {
+                            if (lineStart == null) {
+                              lineStart = vm.Vector2(
+                                  event.localPosition.dx - offset.dx,
+                                  event.localPosition.dy - offset.dy);
+                              // _currentLine = LineNew(
+                              //     event.localPosition.dx - offset.dx,
+                              //     event.localPosition.dy - offset.dy,
+                              //     paint);
+                            } else {
+                              setState(() {
                                 _currentLine ??= Line(paint);
                                 _currentLine!.addFragment(LineFragment(
                                     lineStart!,
@@ -973,37 +962,35 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                                 lineStart = vm.Vector2(
                                     event.localPosition.dx - offset.dx,
                                     event.localPosition.dy - offset.dy);
+                              });
+                            }
+                          } else if (canvasState == CanvasState.erase) {
+                            if (_lineEraser == null) {
+                              _lineEraser = LineEraser(
+                                  lineStart!,
+                                  vm.Vector2(event.localPosition.dx - offset.dx,
+                                      event.localPosition.dy - offset.dy));
+                            } else {
+                              _lineEraser!.nextPoint(
+                                  event.localPosition.dx - offset.dx,
+                                  event.localPosition.dy - offset.dy);
+                            }
+                            bool hasRemoved = false;
+                            for (int i = _paintElements!.length - 1;
+                                i >= 0;
+                                i--) {
+                              if (_paintElements![i]
+                                  .intersectAsSegments(_lineEraser!)) {
+                                _paintElements!.removeAt(i);
+                                hasRemoved = true;
                               }
-                            } else if (canvasState == CanvasState.erase) {
-                              if (_lineEraser == null) {
-                                _lineEraser = LineEraser(
-                                    lineStart!,
-                                    vm.Vector2(
-                                        event.localPosition.dx - offset.dx,
-                                        event.localPosition.dy - offset.dy));
-                                // _lineEraser = EraserLine(LNPoint(
-                                //     event.localPosition.dx - offset.dx,
-                                //     event.localPosition.dy - offset.dy));
-                              } else {
-                                _lineEraser!.nextPoint(
-                                    event.localPosition.dx - offset.dx,
-                                    event.localPosition.dy - offset.dy);
-
-                                // _lineEraser!.a = _lineEraser!.b;
-                                // _lineEraser!.b = vm.Vector2(
-                                //     event.localPosition.dx - offset.dx,
-                                //     event.localPosition.dy - offset.dy);
-                              }
-                              for (int i = _paintElements!.length - 1;
-                                  i >= 0;
-                                  i--) {
-                                if (_paintElements![i]
-                                    .intersectAsSegments(_lineEraser!)) {
-                                  _paintElements!.removeAt(i);
-                                }
-                              }
-                            } else if (canvasState == CanvasState.form) {
-                              if (Forms.line == selectedForm) {
+                            }
+                            if (hasRemoved) {
+                              setState(() {});
+                            }
+                          } else if (canvasState == CanvasState.form) {
+                            if (Forms.line == selectedForm) {
+                              setState(() {
                                 if (_lineForm == null) {
                                   _lineForm = LineForm(
                                       vm.Vector2(
@@ -1020,9 +1007,9 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                                       event.localPosition.dy - offset.dy);
                                   print("Line Form was not null");
                                 }
-                              }
+                              });
                             }
-                          });
+                          }
                         },
                         onPointerUp: (event) {
                           _pointerMap.remove(event.pointer);
@@ -1053,6 +1040,7 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                                     event.localPosition.dx - offset.dx,
                                     event.localPosition.dy - offset.dy,
                                     paint));
+                                print("Added a Point2");
                               });
                             }
                           } else if (canvasState == CanvasState.form) {
@@ -1062,9 +1050,15 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                                     event.localPosition.dx - offset.dx,
                                     event.localPosition.dy - offset.dy);
                                 setState(() {
-                                  _paintElements!.add(_lineForm!);
-                                  _lineForm = null;
-                                  print("Added a Line Form");
+                                  if (_lineForm!.isLineAPoint()) {
+                                    _paintElements!.add(Point(
+                                        _lineForm!.a.x, _lineForm!.a.y, paint));
+                                    print("Added a Point from LineForm");
+                                  } else {
+                                    _paintElements!.add(_lineForm!);
+                                    _lineForm = null;
+                                    print("Added a Line Form");
+                                  }
                                 });
                                 _lineForm = null;
                               } else {
@@ -1074,6 +1068,7 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                           }
                           // setState(() {})
                         },
+                        //TODO Test Scrollview
                         child: SizedBox.expand(
                           child: ClipRRect(
                             child: CustomPaint(
@@ -1084,7 +1079,7 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                                   offset,
                                   paint),
                               // painter: BackgroundPainter(offset),
-                              willChange: false,
+                              willChange: true,
                               child: CustomPaint(
                                 painter: BackgroundPainter(
                                     offset, selectedBackground),

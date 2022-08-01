@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:appwrite/appwrite.dart';
 import 'package:appwrite/models.dart';
 import 'package:flutter/material.dart';
@@ -8,12 +6,13 @@ import 'package:skynote/appwrite.dart';
 import 'package:skynote/main.dart';
 
 class NotebookSelectionScreen extends StatefulWidget {
+  const NotebookSelectionScreen({Key? key}) : super(key: key);
+
   @override
-  _NotebookSelectionScreenState createState() =>
-      _NotebookSelectionScreenState();
+  NotebookSelectionScreenState createState() => NotebookSelectionScreenState();
 }
 
-class _NotebookSelectionScreenState extends State<NotebookSelectionScreen> {
+class NotebookSelectionScreenState extends State<NotebookSelectionScreen> {
   Account appwriteAccount = AppWriteCustom().getAppwriteAccount();
   Storage appwriteStorage = AppWriteCustom().getAppwriteStorage();
 
@@ -47,10 +46,10 @@ class _NotebookSelectionScreenState extends State<NotebookSelectionScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
         appBar: AppBar(
-          title: Text('Select a notebook'),
+          title: const Text('Select a notebook'),
           actions: [
             IconButton(
-              icon: Icon(Icons.refresh),
+              icon: const Icon(Icons.refresh),
               onPressed: () async {
                 setState(() {});
               },
@@ -59,15 +58,14 @@ class _NotebookSelectionScreenState extends State<NotebookSelectionScreen> {
         ),
         floatingActionButton: FloatingActionButton(
           onPressed: () {
-            //TODO Add Button
             MaterialPageRoute route = MaterialPageRoute(
-              builder: (context) => InfiniteCanvasPage(
+              builder: (context) => const InfiniteCanvasPage(
                 noteBookId: null,
               ),
             );
             Navigator.pushReplacement(context, route);
           },
-          child: Icon(Icons.add),
+          child: const Icon(Icons.add),
         ),
         body: FutureBuilder(
           future: getNotebooks(),
@@ -91,7 +89,7 @@ class _NotebookSelectionScreenState extends State<NotebookSelectionScreen> {
                 // },
               );
             } else {
-              return Center(
+              return const Center(
                 child: CircularProgressIndicator(),
               );
             }

@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:skynote/models/base_paint_element.dart';
 import 'package:skynote/models/line_fragment.dart';
 import 'package:skynote/models/point.dart';
+import 'package:skynote/models/types.dart';
 
 class Line extends PaintElement {
   List<LineFragment> fragments = [];
@@ -12,8 +13,13 @@ class Line extends PaintElement {
   void draw(Canvas canvas, Offset offset, double width, double height) {
     // List<Path> paths = [];
     Path path = Path();
+    Path? _currentPath;
     for (LineFragment fragment in fragments) {
-      path.addPath(fragment.getPath(offset), Offset.zero);
+      _currentPath = fragment.getPath(offset, width, height);
+      if (_currentPath != null) {
+        path.addPath(_currentPath, Offset.zero);
+      }
+      // path.addPath(, Offset.zero);
     }
     canvas.drawPath(path, paint);
   }
@@ -35,7 +41,7 @@ class Line extends PaintElement {
   @override
   Map<String, dynamic> toJson() {
     return {
-      'type': 'Line',
+      'type': PaintElementTypes.line.index,
       'fragments': fragments.map((e) => e.toJson()).toList(),
       'paint': paintConverter.paintToJson(paint),
     };
