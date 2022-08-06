@@ -1,6 +1,7 @@
 import 'package:appwrite/appwrite.dart';
 import 'package:appwrite/models.dart';
 import 'package:flutter/material.dart';
+import 'package:lit_relative_date_time/lit_relative_date_time.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:skynote/appwrite.dart';
 import 'package:skynote/main.dart';
@@ -31,15 +32,17 @@ class NotebookSelectionScreenState extends State<NotebookSelectionScreen> {
         });
   }
 
-  Future<Map<String, String>> getNotebooks() async {
-    Map<String, String> notebooks = {};
+  Future<List<File>> getNotebooks() async {
     List<File> files = await appwriteStorage
-        .listFiles(bucketId: '62e2afd619bea62ecafd')
+        .listFiles(bucketId: '62e2afd619bea62ecafd', orderType: 'ASC')
         .then((value) => value.files);
-    for (File file in files) {
-      notebooks[file.name] = file.$id;
-    }
-    return notebooks;
+    //Order files by $updatedAt (newest first)
+    files.sort((a, b) => b.$updatedAt.compareTo(a.$updatedAt));
+    return files;
+    // for (File file in files) {
+    //   notebooks[file.$id] = file.name;
+    // }
+    // return notebooks;
   }
 
   @override
@@ -54,6 +57,15 @@ class NotebookSelectionScreenState extends State<NotebookSelectionScreen> {
                 setState(() {});
               },
             ),
+            IconButton(
+                onPressed: () async {
+                  await appwriteAccount.deleteSession(sessionId: 'current');
+                  await SharedPreferences.getInstance().then((value) => {
+                        value.setBool('isLoggedIn', false),
+                        Navigator.pushReplacementNamed(context, '/login')
+                      });
+                },
+                icon: const Icon(Icons.exit_to_app)),
           ],
         ),
         floatingActionButton: FloatingActionButton(
@@ -69,17 +81,28 @@ class NotebookSelectionScreenState extends State<NotebookSelectionScreen> {
         ),
         body: FutureBuilder(
           future: getNotebooks(),
-          builder: (context, AsyncSnapshot<Map<String, String>> snapshot) {
+          builder: (context, AsyncSnapshot<List<File>> snapshot) {
             if (snapshot.hasData) {
               return ListView.builder(
                 itemCount: snapshot.data!.length,
                 itemBuilder: (context, index) {
+                  var date = DateTime.fromMillisecondsSinceEpoch(
+                      snapshot.data!.elementAt(index).$updatedAt * 1000);
+                  var readableDate =
+                      RelativeDateTime(dateTime: DateTime.now(), other: date);
+                  RelativeDateFormat _relativeDateFormatter =
+                      RelativeDateFormat(
+                    Localizations.localeOf(context),
+                  );
+
                   return ListTile(
-                    title: Text(snapshot.data!.keys.elementAt(index)),
+                    title: Text(snapshot.data!.elementAt(index).name +
+                        " / " +
+                        _relativeDateFormatter.format(readableDate)),
                     onTap: () async {
                       MaterialPageRoute route = MaterialPageRoute(
                         builder: (context) => InfiniteCanvasPage(
-                          noteBookId: snapshot.data!.values.elementAt(index),
+                          noteBookId: snapshot.data!.elementAt(index).$id,
                         ),
                       );
                       Navigator.pushReplacement(context, route);

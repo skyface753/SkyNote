@@ -8,16 +8,19 @@ import 'package:skynote/models/types.dart';
 class Line extends PaintElement {
   List<LineFragment> fragments = [];
   Line(Paint paint) : super(paint);
+  bool isLineRendered = false;
 
   @override
   void draw(Canvas canvas, Offset offset, double width, double height) {
     // List<Path> paths = [];
     Path path = Path();
     Path? _currentPath;
+    isLineRendered = false;
     for (LineFragment fragment in fragments) {
       _currentPath = fragment.getPath(offset, width, height);
       if (_currentPath != null) {
         path.addPath(_currentPath, Offset.zero);
+        isLineRendered = true;
       }
       // path.addPath(, Offset.zero);
     }
@@ -26,8 +29,14 @@ class Line extends PaintElement {
 
   @override
   bool intersectAsSegments(lineEraser) {
+    if (!isLineRendered) {
+      print('Line is not rendered');
+      return false;
+    }
+    bool byDistance = fragments.length < 3;
+    print("byDistance: $byDistance");
     for (LineFragment fragment in fragments) {
-      if (fragment.intersectAsSegments(lineEraser)) {
+      if (fragment.intersectAsSegments(lineEraser, byDistance)) {
         return true;
       }
     }

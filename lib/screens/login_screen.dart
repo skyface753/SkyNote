@@ -1,3 +1,4 @@
+import 'package:rounded_loading_button/rounded_loading_button.dart';
 import 'package:appwrite/appwrite.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -15,6 +16,9 @@ class LoginScreenState extends State<LoginScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
+  final RoundedLoadingButtonController _btnController =
+      RoundedLoadingButtonController();
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -30,30 +34,34 @@ class LoginScreenState extends State<LoginScreen> {
               decoration: const InputDecoration(
                 labelText: 'Email',
               ),
+              onChanged: (value) => _btnController.reset(),
             ),
             TextField(
               controller: _passwordController,
               decoration: const InputDecoration(
                 labelText: 'Password',
               ),
+              onChanged: (value) => _btnController.reset(),
             ),
-            ElevatedButton(
-              child: const Text('Login'),
-              onPressed: () async {
-                try {
-                  await appwriteAccount.createEmailSession(
-                    email: _emailController.text,
-                    password: _passwordController.text,
-                  );
-                  await SharedPreferences.getInstance().then((value) => {
-                        value.setBool('isLoggedIn', true),
-                        Navigator.pushReplacementNamed(context, '/')
-                      });
-                } catch (e) {
-                  print(e);
-                }
-              },
-            ),
+            RoundedLoadingButton(
+                child: Text('Login', style: TextStyle(color: Colors.white)),
+                controller: _btnController,
+                onPressed: () async {
+                  try {
+                    await appwriteAccount.createEmailSession(
+                      email: _emailController.text,
+                      password: _passwordController.text,
+                    );
+                    _btnController.success();
+                    await SharedPreferences.getInstance().then((value) => {
+                          value.setBool('isLoggedIn', true),
+                          Navigator.pushReplacementNamed(context, '/')
+                        });
+                  } catch (e) {
+                    _btnController.error();
+                    print(e);
+                  }
+                })
           ],
         ),
       ),

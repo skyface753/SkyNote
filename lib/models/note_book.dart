@@ -9,9 +9,9 @@ class NoteBook {
   List<NoteSection> sections = [];
   int? selectedSectionIndex;
   int? selectedNoteIndex;
-  Background defaultBackground;
+  Background defaultBackground = Background.lines;
 
-  NoteBook(this.name, this.defaultBackground);
+  NoteBook(this.name);
 
   // Set appwriteFileId
   void setAppwriteFileId(String appwriteFileId) {

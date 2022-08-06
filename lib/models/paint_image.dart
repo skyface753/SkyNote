@@ -19,6 +19,7 @@ class PaintImage extends PaintElement {
   String appwriteFileId;
   vm.Vector2 a;
   ui.Image? image;
+  Uint8List? _imageData;
 
   PaintImage(this.appwriteFileId, this.a, ui.Paint paint,
       VoidCallback refreshPaintWidget)
@@ -65,9 +66,28 @@ class PaintImage extends PaintElement {
     }
   }
 
+  Widget build(Offset offset, bool isDisabled) {
+    if (image == null) {
+      return Container();
+    }
+    return Positioned(
+        left: offset.dx + a.x,
+        top: offset.dy + a.y,
+        child: SizedBox(
+            width: 100,
+            height: 100,
+            child: AbsorbPointer(
+                absorbing: isDisabled,
+                child: Listener(
+                  onPointerDown: ((event) => {print("PointerDown Image")}),
+                  child: Image.memory(_imageData!),
+                ))));
+  }
+
   void downloadImage(VoidCallback callback) async {
     Uint8List fileBytes = await appwriteCustomStorage.getFileDownload(
         bucketId: '62e40e4e2d262cc2e179', fileId: appwriteFileId);
+    _imageData = fileBytes;
     final ui.Codec codec = await ui.instantiateImageCodec(fileBytes);
 
     final ui.Image image = (await codec.getNextFrame()).image;

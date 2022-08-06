@@ -1,4 +1,5 @@
 // import 'dart:math';
+import 'dart:math';
 import 'dart:ui';
 
 import 'package:skynote/models/line_eraser.dart';
@@ -33,10 +34,20 @@ class LineFragment {
     }
   }
 
-  bool intersectAsSegments(LineEraser other) {
+  bool intersectAsSegments(LineEraser other, bool byDistance) {
     if (!isRenderd) {
       print("Not in display => not intersect");
       return false;
+    }
+    // Small lines intersects by distance, large lines by collision
+    if (byDistance) {
+      final distance = sqrt(pow(other.b.x - a.x, 2) + pow(other.b.y - a.y, 2));
+      print("Distance: $distance");
+      if (distance < 5) {
+        return true;
+      } else {
+        return false;
+      }
     }
     LineFragment line1 = this;
     final p = line1.a;

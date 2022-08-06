@@ -22,7 +22,7 @@ class Point extends PaintElement {
         y <= -offset.dy + height) {
       canvas.drawPoints(
           PointMode.points, [Offset(x + offset.dx, y + offset.dy)], paint);
-      print("Drawing point");
+      // print("Drawing point");
       isRenderd = true;
     } else {
       // print("Not drawing point");

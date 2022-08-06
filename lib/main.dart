@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
+import 'package:file_picker/file_picker.dart';
 import 'package:flash/flash.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -20,13 +21,17 @@ import 'package:skynote/models/line_fragment.dart';
 // import 'package:skynote/models/line_fragment.dart';
 import 'package:skynote/models/note_book.dart';
 import 'package:skynote/models/paint_image.dart';
+import 'package:skynote/models/pencils.dart';
 import 'package:skynote/models/point.dart';
+import 'package:skynote/models/text.dart';
 import 'package:skynote/screens/login_screen.dart';
 import 'package:skynote/screens/notebook_selection_screen.dart';
+import 'package:skynote/widgets/topbar.dart';
 import 'package:vector_math/vector_math_64.dart' as vm;
 import 'package:http/io_client.dart';
 import 'package:http/http.dart' as http;
 import 'package:appwrite/appwrite.dart';
+import 'package:zoom_widget/zoom_widget.dart';
 
 String storageID = '62e2afd619bea62ecafd';
 
@@ -83,21 +88,6 @@ String _canvasStateToString(CanvasState state) {
   }
 }
 
-String _formsToString(Forms form) {
-  switch (form) {
-    case Forms.none:
-      return 'Forms';
-    case Forms.line:
-      return 'line';
-    case Forms.rectangle:
-      return 'rectangle';
-    case Forms.circle:
-      return 'circle';
-    case Forms.triangle:
-      return 'triangle';
-  }
-}
-
 class InfiniteCanvasPage extends StatefulWidget {
   final String? noteBookId;
   const InfiniteCanvasPage({Key? key, required this.noteBookId})
@@ -123,6 +113,9 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
 
   late String oldNotebookName;
 
+  //TODO TEST
+  TextElement testTextElement = TextElement("Hello World", Offset(10, 10));
+
   //Forms
   LineForm? _lineForm;
 
@@ -130,15 +123,15 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
 
   Storage appwriteStorage = AppWriteCustom().getAppwriteStorage();
 
-  final paint = Paint()
-    ..style = PaintingStyle.stroke
-    ..strokeCap = StrokeCap.round
-    ..strokeWidth = 4.0
-    ..color = Colors.indigo;
+  List<Pencil> pencils = Pencil.getDefaultPencils();
+  Paint _currentPaint = Pencil.empty().getPaint();
+
+  PaintImage _testPaintImage = PaintImage("62ec2717efa2b6a8da49",
+      vm.Vector2(20, 30), Paint()..color = Colors.red, () {});
 
   // For COLOR PICKER
   // Initial Selected Value
-  Color dropdownValueColor = Colors.indigo;
+  // Color dropdownValueColor = Colors.indigo;
 
   @override
   void initState() {
@@ -150,7 +143,7 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
   Future<void> getNotebook() async {
     // Init new Notebook and Upload to AppWrite
     if (widget.noteBookId == null) {
-      _noteBook = NoteBook("Neues Notizbuch", Background.white);
+      _noteBook = NoteBook("Neues Notizbuch");
       final file = await getLocalFile('neues_notizbuch.json');
       file.writeAsStringSync(_noteBook.toString());
       final inputFile = InputFile(path: file.path, filename: _noteBook.name);
@@ -175,7 +168,8 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
         NoteBook.fromJson(json.decode(fileContent), (() => setState(() {})));
     _noteBook.appwriteFileId = notebookId;
     oldNotebookName = _noteBook.name;
-
+    //TODO Background for each page
+    // selectedBackground = _noteBook.defaultBackground;
     if (_noteBook.selectedSectionIndex != null &&
         _noteBook.selectedNoteIndex != null) {
       try {
@@ -292,7 +286,7 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
     Background.checkered,
     Background.black,
   ];
-  Background selectedBackground = Background.white;
+  // Background selectedBackground = Background.lines;
 
   List<Forms> formItems = [
     Forms.none,
@@ -304,7 +298,7 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
   Forms selectedForm = Forms.none;
   // FOR Stroke WIDTH PICKER
   // Initial Selected Value
-  double dropdownValueStrokeWidth = 4.0;
+  // double dropdownValueStrokeWidth = 4.0;
   // List of items in our dropdown menu
   List<double> strokeWidthItems = [
     1.0,
@@ -596,504 +590,422 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
     }
 
     return Scaffold(
-      //TODO: Tablet Drawer
-      drawer: loading == true
-          ? null
-          : (useMobileLayout ? mobileDrawer() : mobileDrawer()),
-      key: scaffoldKey,
-      floatingActionButton: FloatingActionButton(
-        backgroundColor:
-            canvasState == CanvasState.draw ? Colors.blue : Colors.red,
-        onPressed: () {
-          setState(() {
-            if (canvasState != CanvasState.draw) {
-              canvasState = CanvasState.draw;
-            } else {
-              canvasState = CanvasState.pan;
-            }
-          });
-        },
-        child: Text(
-          _canvasStateToString(canvasState),
-          style: const TextStyle(color: Colors.white),
+        //TODO: Tablet Drawer
+        drawer: loading == true
+            ? null
+            : (useMobileLayout ? mobileDrawer() : mobileDrawer()),
+        key: scaffoldKey,
+        floatingActionButton: FloatingActionButton(
+          backgroundColor:
+              canvasState == CanvasState.draw ? Colors.blue : Colors.red,
+          onPressed: () {
+            setState(() {
+              if (canvasState != CanvasState.draw) {
+                canvasState = CanvasState.draw;
+              } else {
+                canvasState = CanvasState.pan;
+              }
+            });
+          },
+          child: Text(
+            _canvasStateToString(canvasState),
+            style: const TextStyle(color: Colors.white),
+          ),
         ),
-      ),
-      appBar: _paintElements == null
-          ? AppBar(
-              title: const Text('Skynote'),
-            )
-          : null,
-      body: loading == true
-          ? const Center(
-              child: CircularProgressIndicator(),
-            )
-          : _paintElements == null
-              ? Center(
-                  child: ElevatedButton(
-                    child: const Text("Create Section"),
-                    onPressed: () {
-                      scaffoldKey.currentState?.openDrawer();
-                    },
-                  ),
-                )
-              : Column(
-                  children: <Widget>[
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      height: 70,
-                      width: double.infinity,
-                      color: Colors.grey,
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: <Widget>[
-                            IconButton(
-                              icon: const Icon(Icons.menu),
-                              onPressed: () =>
-                                  scaffoldKey.currentState?.openDrawer(),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.arrow_back),
-                              color: Colors.black,
-                              onPressed: () {
-                                if (_paintElements!.isNotEmpty) {
-                                  _paintElements!.removeLast();
-                                }
-
-                                setState(() {});
-                              },
-                            ),
-                            DropdownButton(
-                              value: dropdownValueColor,
-                              items: colorItems
-                                  .map(
-                                    (color) => DropdownMenuItem(
-                                      value: color,
-                                      child: ColoredBox(
-                                        color: color,
-                                        child: const SizedBox(
-                                          width: 20,
-                                          height: 20,
-                                        ),
-                                      ),
-                                    ),
-                                  )
-                                  .toList(),
-                              onChanged: (Color? newValue) {
-                                dropdownValueColor = newValue!;
-                                paint.color = newValue;
-                                setState(() {});
-                              },
-                            ), // Background
-                            DropdownButton(
-                                items: backgroundItems.map((background) {
-                                  return DropdownMenuItem(
-                                      value: background,
-                                      child: SizedBox(
-                                        height: 30,
-                                        width: 30,
-                                        child: CustomPaint(
-                                            painter:
-                                                BackgroundPreview(background)),
-                                      ));
-                                }).toList(),
-                                value: selectedBackground,
-                                onChanged: (Background? newValue) {
-                                  selectedBackground = newValue!;
-                                  _noteBook.defaultBackground = newValue;
-                                  setState(() {});
-                                }), // Background
-
-                            DropdownButton(
-                              value: dropdownValueStrokeWidth,
-                              items: strokeWidthItems
-                                  .map(
-                                    (strokeWidth) => DropdownMenuItem(
-                                      value: strokeWidth,
-                                      child: Text(
-                                        '$strokeWidth',
-                                        style: const TextStyle(
-                                            fontSize: 20, color: Colors.black),
-                                      ),
-                                    ),
-                                  )
-                                  .toList(),
-                              onChanged: (double? newValue) {
-                                dropdownValueStrokeWidth = newValue!;
-                                paint.strokeWidth = newValue;
-                                setState(() {});
-                              },
-                              dropdownColor: Colors.white,
-                            ),
-                            DropdownButton(
-                                items: formItems.map((form) {
-                                  return DropdownMenuItem(
-                                      value: form,
-                                      child: Text(
-                                        _formsToString(form),
-                                        style: const TextStyle(
-                                            fontSize: 20, color: Colors.black),
-                                      ));
-                                }).toList(),
-                                value: selectedForm,
-                                onChanged: (Forms? newValue) {
-                                  if (newValue == Forms.none) {
-                                    canvasState = CanvasState.draw;
-                                  } else {
-                                    canvasState = CanvasState.form;
-                                  }
-                                  selectedForm = newValue!;
-                                  setState(() {});
-                                }),
-                            // Eraser Button
-                            IconButton(
-                              icon: const Icon(Icons.delete),
-                              color: CanvasState.erase == canvasState
-                                  ? Colors.red
-                                  : Colors.black,
-                              onPressed: () {
-                                if (canvasState == CanvasState.erase) {
-                                  canvasState = CanvasState.draw;
-                                } else {
-                                  canvasState = CanvasState.erase;
-                                }
-                                setState(() {});
-                              },
-                            ), //Add an Image
-                            IconButton(
-                                onPressed: () async {
-                                  print("Add Image");
-                                  final ImagePicker picker = ImagePicker();
-                                  print("ImagePicker");
-                                  final XFile? image = await picker.pickImage(
-                                      source: ImageSource.gallery);
-                                  print("Adding Image");
-                                  if (image != null) {
-                                    print("Image Selected");
-                                    InputFile inputFile =
-                                        InputFile(path: image.path);
-                                    var uploadedFile =
-                                        await appwriteStorage.createFile(
-                                            bucketId: '62e40e4e2d262cc2e179',
-                                            fileId: 'unique()',
-                                            file: inputFile);
-                                    print("File Uploaded");
-                                    PaintImage newPaintImage = PaintImage(
-                                        uploadedFile.$id,
-                                        vm.Vector2(-offset.dx, -offset.dy),
-                                        paint, () {
-                                      setState(() {});
-                                    });
-                                    _paintElements!.add(newPaintImage);
-                                    saveToAppwrite();
-                                    setState(() {});
-                                  } else {
-                                    print("Image is null");
-                                  }
-                                },
-                                icon: const Icon(Icons.add_photo_alternate)),
-                            //Save Button
-                            IconButton(
-                              icon: const Icon(Icons.save),
-                              color: Colors.black,
-                              onPressed: () {
-                                //TODO Manual Save
-                                print(_noteBook.toString());
-                                saveToAppwrite();
-                              },
-                            ),
-                            //Verify Button
-                            IconButton(
-                              icon: const Icon(Icons.verified_user),
-                              color: Colors.black,
-                              onPressed: () {
-                                verifyNotebook();
-                              },
-                            ),
-                            // Zoom Button
-                            IconButton(
-                              icon: const Icon(Icons.zoom_in),
-                              color: Colors.black,
-                              onPressed: () {
-                                if (currScale < 4) {
-                                  currScale += 0.5;
-                                }
-                                setState(() {});
-                              },
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.zoom_out),
-                              color: Colors.black,
-                              onPressed: () {
-                                if (currScale >= 1.5) {
-                                  currScale -= 0.5;
-                                }
-                                setState(() {});
-                              },
-                            ),
-                            // Back to Notebook List Screen
-                            IconButton(
-                              icon: const Icon(Icons
-                                  .logout), // Not sure if this is the right icon
-                              color: Colors.black,
-                              onPressed: () async {
-                                //TODO Show loading dialog while saving
-                                if (await saveToAppwrite()) {
-                                  Navigator.pushReplacementNamed(context, "/");
-                                }
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
+        appBar: _paintElements == null
+            ? AppBar(
+                title: const Text('Skynote'),
+              )
+            : null,
+        body: loading == true
+            ? const Center(
+                child: CircularProgressIndicator(),
+              )
+            : _paintElements == null
+                ? Center(
+                    child: ElevatedButton(
+                      child: const Text("Create Section"),
+                      onPressed: () {
+                        scaffoldKey.currentState?.openDrawer();
+                      },
                     ),
-                    Expanded(
-                        child: Transform.scale(
-                      scale: currScale,
-                      alignment: Alignment.topLeft,
-                      child: Listener(
-                        onPointerDown: (event) {
-                          _pointerMap[event.pointer] = PointerMap(
-                            vm.Vector2(
-                                event.localPosition.dx, event.localPosition.dy),
-                          );
-                          if (event.kind == PointerDeviceKind.stylus) {
-                            stylusAvailable = true;
-                            if (canvasState == CanvasState.pan) {
+                  )
+                : SafeArea(
+                    child: Column(
+                      children: <Widget>[
+                        TopBar(
+                          scaffoldKey,
+                          _paintElements,
+                          colorItems,
+                          formItems,
+                          selectedForm,
+                          strokeWidthItems,
+                          offset,
+                          _currentPaint,
+                          backgroundItems,
+                          _noteBook,
+                          canvasState,
+                          currScale,
+                          onChangPaintColor: (value) => setState(() {
+                            _currentPaint.color = value;
+                          }),
+                          onChangeStrokeWidth: (value) => setState(() {
+                            _currentPaint.strokeWidth = value;
+                          }),
+                          onChangeForm: (value) => setState(() {
+                            if (value == Forms.none) {
                               canvasState = CanvasState.draw;
+                            } else {
+                              canvasState = CanvasState.form;
                             }
-                          }
-                          if (event.kind == PointerDeviceKind.touch &&
-                              stylusAvailable) {
-                            canvasState = CanvasState.pan;
-                          }
-                          if (_pointerMap.length > 1) {
-                            print("More than one pointer");
-                            canvasState = CanvasState.zoom;
-                          } else if (canvasState == CanvasState.draw) {
-                            lineStart = vm.Vector2(
-                                event.localPosition.dx - offset.dx,
-                                event.localPosition.dy - offset.dy);
+                            selectedForm = value;
+                          }),
+                          onChangeBackground: (value) => setState(() {
+                            _noteBook.defaultBackground = value;
+                          }),
+                          onChangeEraseMode: () => setState(() {
+                            if (canvasState == CanvasState.erase) {
+                              canvasState = CanvasState.draw;
+                            } else {
+                              canvasState = CanvasState.erase;
+                            }
+                          }),
+                          onImagePicker: () async {
+                            print("Add Image");
+                            FilePickerResult? result = await FilePicker.platform
+                                .pickFiles(
+                                    type: FileType.image,
+                                    allowMultiple: false,
+                                    allowCompression: false);
 
-                            // _currentLineFragment = LineFragment(
-                            //     event.localPosition.dx - offset.dx,
-                            //     event.localPosition.dy - offset.dy,
-                            //     paint);
-                          } else if (canvasState == CanvasState.erase) {
-                            //TODO Performance
-                            _lineEraser = LineEraser(
-                              vm.Vector2(event.localPosition.dx - offset.dx,
-                                  event.localPosition.dy - offset.dy),
-                              vm.Vector2(event.localPosition.dx - offset.dx,
-                                  event.localPosition.dy - offset.dy),
-                            );
-                            // _lineEraser = EraserLine(LNPoint(
-                            //     event.localPosition.dx - offset.dx,
-                            //     event.localPosition.dy - offset.dy));
-                          } else if (canvasState == CanvasState.form) {
-                            if (Forms.line == selectedForm) {
-                              _lineForm = LineForm(
-                                  vm.Vector2(event.localPosition.dx - offset.dx,
-                                      event.localPosition.dy - offset.dy),
-                                  vm.Vector2(event.localPosition.dx - offset.dx,
-                                      event.localPosition.dy - offset.dy),
-                                  paint);
-                              // _lineForm = LineForm(
-                              //     LNPoint(event.localPosition.dx - offset.dx,
-                              //         event.localPosition.dy - offset.dy),
-                              //     LNPoint(event.localPosition.dx - offset.dx,
-                              //         event.localPosition.dy - offset.dy),
-                              //     paint);
+                            if (result != null) {
+                              print("Image Selected");
+                              File file = File(result.files.single.path!);
+                              print("Adding Image");
+                              InputFile inputFile = InputFile(path: file.path);
+                              var uploadedFile =
+                                  await appwriteStorage.createFile(
+                                      bucketId: '62e40e4e2d262cc2e179',
+                                      fileId: 'unique()',
+                                      file: inputFile);
+                              print("File Uploaded");
+                              PaintImage newPaintImage = PaintImage(
+                                  uploadedFile.$id,
+                                  vm.Vector2(-offset.dx, -offset.dy),
+                                  _currentPaint,
+                                  () {});
+                              _paintElements!.add(newPaintImage);
+                              saveToAppwrite();
+                            } else {
+                              print("No file selected");
+                              // User canceled the picker
                             }
-                          }
-                          setState(() {});
-                        },
-                        onPointerMove: (event) {
-                          if (canvasState == CanvasState.zoom) {
-                            double currPosX = event.localPosition.dx;
-                            double currPosY = event.localPosition.dy;
-                            double lastPosX =
-                                _pointerMap[event.pointer]!.lastPosition.x;
-                            double lastPosY =
-                                _pointerMap[event.pointer]!.lastPosition.y;
-                            // Distace between the two points
-                            // d = sqrt((x2 - x1)^2 + (y2 - y1)^2)
-                            double distance = sqrt(pow(currPosX - lastPosX, 2) +
-                                pow(currPosY - lastPosY, 2));
-                            print("Distance: $distance");
-                            currScale += distance / 100;
-                            setState(() {});
-                            try {
-                              _pointerMap[event.pointer]!.lastPosition =
-                                  vm.Vector2(event.localPosition.dx,
-                                      event.localPosition.dy);
-                            } catch (e) {
-                              print(e);
-                            }
-                            return;
-                          }
-                          if (canvasState == CanvasState.pan) {
+                          },
+                          onSave: () => saveToAppwrite(),
+                          onVerify: () => verifyNotebook(),
+                          onZoomIn: () {
                             setState(() {
-                              offset += event.delta;
-                              if (offset.dx > 0) {
-                                offset = Offset(0, offset.dy);
-                              }
-                              if (offset.dy > 0) {
-                                offset = Offset(offset.dx, 0);
+                              if (currScale < 4) {
+                                currScale += 0.5;
                               }
                             });
-                          } else if (canvasState == CanvasState.draw) {
-                            if (lineStart == null) {
-                              lineStart = vm.Vector2(
-                                  event.localPosition.dx - offset.dx,
-                                  event.localPosition.dy - offset.dy);
-                              // _currentLine = LineNew(
-                              //     event.localPosition.dx - offset.dx,
-                              //     event.localPosition.dy - offset.dy,
-                              //     paint);
-                            } else {
-                              setState(() {
-                                _currentLine ??= Line(paint);
-                                _currentLine!.addFragment(LineFragment(
-                                    lineStart!,
-                                    vm.Vector2(
-                                        event.localPosition.dx - offset.dx,
-                                        event.localPosition.dy - offset.dy)));
-                                lineStart = vm.Vector2(
-                                    event.localPosition.dx - offset.dx,
-                                    event.localPosition.dy - offset.dy);
-                              });
-                            }
-                          } else if (canvasState == CanvasState.erase) {
-                            if (_lineEraser == null) {
-                              _lineEraser = LineEraser(
-                                  lineStart!,
-                                  vm.Vector2(event.localPosition.dx - offset.dx,
-                                      event.localPosition.dy - offset.dy));
-                            } else {
-                              _lineEraser!.nextPoint(
-                                  event.localPosition.dx - offset.dx,
-                                  event.localPosition.dy - offset.dy);
-                            }
-                            bool hasRemoved = false;
-                            for (int i = _paintElements!.length - 1;
-                                i >= 0;
-                                i--) {
-                              if (_paintElements![i]
-                                  .intersectAsSegments(_lineEraser!)) {
-                                _paintElements!.removeAt(i);
-                                hasRemoved = true;
+                          },
+                          onZoomOut: () {
+                            setState(() {
+                              if (currScale >= 1.5) {
+                                currScale -= 0.5;
                               }
+                            });
+                          },
+                          onGoToHome: () async {
+                            if (await saveToAppwrite()) {
+                              Navigator.pushReplacementNamed(context, "/");
                             }
-                            if (hasRemoved) {
-                              setState(() {});
-                            }
-                          } else if (canvasState == CanvasState.form) {
-                            if (Forms.line == selectedForm) {
-                              setState(() {
-                                if (_lineForm == null) {
-                                  _lineForm = LineForm(
-                                      vm.Vector2(
-                                          event.localPosition.dx - offset.dx,
-                                          event.localPosition.dy - offset.dy),
-                                      vm.Vector2(
-                                          event.localPosition.dx - offset.dx,
-                                          event.localPosition.dy - offset.dy),
-                                      paint);
-                                  print("Line Form was null");
-                                } else {
-                                  _lineForm!.setEndpoint(
+                          },
+                        ),
+                        Expanded(
+                            child: Transform.scale(
+                          scale: currScale,
+                          alignment: Alignment.topLeft,
+                          child: Stack(children: [
+                            Listener(
+                              onPointerDown: (event) {
+                                _pointerMap[event.pointer] = PointerMap(
+                                  vm.Vector2(event.localPosition.dx,
+                                      event.localPosition.dy),
+                                );
+                                if (event.kind == PointerDeviceKind.stylus) {
+                                  stylusAvailable = true;
+                                  if (canvasState == CanvasState.pan) {
+                                    canvasState = CanvasState.draw;
+                                  }
+                                }
+                                if (event.kind == PointerDeviceKind.touch &&
+                                    stylusAvailable) {
+                                  canvasState = CanvasState.pan;
+                                }
+                                if (_pointerMap.length > 1) {
+                                  print("More than one pointer");
+                                  canvasState = CanvasState.zoom;
+                                } else if (canvasState == CanvasState.draw) {
+                                  lineStart = vm.Vector2(
                                       event.localPosition.dx - offset.dx,
                                       event.localPosition.dy - offset.dy);
-                                  print("Line Form was not null");
-                                }
-                              });
-                            }
-                          }
-                        },
-                        onPointerUp: (event) {
-                          _pointerMap.remove(event.pointer);
-                          if (canvasState == CanvasState.zoom &&
-                              _pointerMap.isEmpty) {
-                            canvasState = CanvasState.pan;
-                          }
-                          if (canvasState == CanvasState.draw) {
-                            if (_currentLine != null) {
-                              if (_currentLine!.fragments.length > 1) {
-                                setState(() {
-                                  _paintElements!.add(_currentLine!);
-                                  _currentLine = null;
-                                });
-                              } else if (_currentLine!.fragments.length == 1) {
-                                setState(() {
-                                  _paintElements!.add(Point(
-                                      event.localPosition.dx - offset.dx,
-                                      event.localPosition.dy - offset.dy,
-                                      paint));
-                                  _currentLine = null;
-                                  print("Added a Point");
-                                });
-                              }
-                            } else if (lineStart != null) {
-                              setState(() {
-                                _paintElements!.add(Point(
-                                    event.localPosition.dx - offset.dx,
-                                    event.localPosition.dy - offset.dy,
-                                    paint));
-                                print("Added a Point2");
-                              });
-                            }
-                          } else if (canvasState == CanvasState.form) {
-                            if (Forms.line == selectedForm) {
-                              if (_lineForm != null) {
-                                _lineForm!.setEndpoint(
-                                    event.localPosition.dx - offset.dx,
-                                    event.localPosition.dy - offset.dy);
-                                setState(() {
-                                  if (_lineForm!.isLineAPoint()) {
-                                    _paintElements!.add(Point(
-                                        _lineForm!.a.x, _lineForm!.a.y, paint));
-                                    print("Added a Point from LineForm");
-                                  } else {
-                                    _paintElements!.add(_lineForm!);
-                                    _lineForm = null;
-                                    print("Added a Line Form");
+
+                                  // _currentLineFragment = LineFragment(
+                                  //     event.localPosition.dx - offset.dx,
+                                  //     event.localPosition.dy - offset.dy,
+                                  //     paint);
+                                } else if (canvasState == CanvasState.erase) {
+                                  //TODO Performance
+                                  _lineEraser = LineEraser(
+                                    vm.Vector2(
+                                        event.localPosition.dx - offset.dx,
+                                        event.localPosition.dy - offset.dy),
+                                    vm.Vector2(
+                                        event.localPosition.dx - offset.dx,
+                                        event.localPosition.dy - offset.dy),
+                                  );
+                                  // _lineEraser = EraserLine(LNPoint(
+                                  //     event.localPosition.dx - offset.dx,
+                                  //     event.localPosition.dy - offset.dy));
+                                } else if (canvasState == CanvasState.form) {
+                                  if (Forms.line == selectedForm) {
+                                    _lineForm = LineForm(
+                                        vm.Vector2(
+                                            event.localPosition.dx - offset.dx,
+                                            event.localPosition.dy - offset.dy),
+                                        vm.Vector2(
+                                            event.localPosition.dx - offset.dx,
+                                            event.localPosition.dy - offset.dy),
+                                        _currentPaint);
+                                    // _lineForm = LineForm(
+                                    //     LNPoint(event.localPosition.dx - offset.dx,
+                                    //         event.localPosition.dy - offset.dy),
+                                    //     LNPoint(event.localPosition.dx - offset.dx,
+                                    //         event.localPosition.dy - offset.dy),
+                                    //     paint);
                                   }
-                                });
-                                _lineForm = null;
-                              } else {
-                                print("Line form is null");
-                              }
-                            }
-                          }
-                          // setState(() {})
-                        },
-                        //TODO Test Scrollview
-                        child: SizedBox.expand(
-                          child: ClipRRect(
-                            child: CustomPaint(
-                              foregroundPainter: CanvasCustomPainter(
-                                  _paintElements!,
-                                  _currentLine,
-                                  _lineForm,
-                                  offset,
-                                  paint),
-                              // painter: BackgroundPainter(offset),
-                              willChange: true,
-                              child: CustomPaint(
-                                painter: BackgroundPainter(
-                                    offset, selectedBackground),
-                                willChange: false,
-                              ),
+                                }
+                                setState(() {});
+                              },
+                              onPointerMove: (event) {
+                                if (canvasState == CanvasState.zoom) {
+                                  double currPosX = event.localPosition.dx;
+                                  double currPosY = event.localPosition.dy;
+                                  double lastPosX = _pointerMap[event.pointer]!
+                                      .lastPosition
+                                      .x;
+                                  double lastPosY = _pointerMap[event.pointer]!
+                                      .lastPosition
+                                      .y;
+                                  // Distace between the two points
+                                  // d = sqrt((x2 - x1)^2 + (y2 - y1)^2)
+                                  double distance = sqrt(
+                                      pow(currPosX - lastPosX, 2) +
+                                          pow(currPosY - lastPosY, 2));
+                                  print("Distance: $distance");
+                                  currScale += distance / 100;
+                                  setState(() {});
+                                  try {
+                                    _pointerMap[event.pointer]!.lastPosition =
+                                        vm.Vector2(event.localPosition.dx,
+                                            event.localPosition.dy);
+                                  } catch (e) {
+                                    print(e);
+                                  }
+                                  return;
+                                }
+                                if (canvasState == CanvasState.pan) {
+                                  setState(() {
+                                    offset += event.delta;
+                                    if (offset.dx > 0) {
+                                      offset = Offset(0, offset.dy);
+                                    }
+                                    if (offset.dy > 0) {
+                                      offset = Offset(offset.dx, 0);
+                                    }
+                                  });
+                                } else if (canvasState == CanvasState.draw) {
+                                  if (lineStart == null) {
+                                    lineStart = vm.Vector2(
+                                        event.localPosition.dx - offset.dx,
+                                        event.localPosition.dy - offset.dy);
+                                    // _currentLine = LineNew(
+                                    //     event.localPosition.dx - offset.dx,
+                                    //     event.localPosition.dy - offset.dy,
+                                    //     paint);
+                                  } else {
+                                    setState(() {
+                                      _currentLine ??= Line(_currentPaint);
+                                      _currentLine!.addFragment(LineFragment(
+                                          lineStart!,
+                                          vm.Vector2(
+                                              event.localPosition.dx -
+                                                  offset.dx,
+                                              event.localPosition.dy -
+                                                  offset.dy)));
+                                      lineStart = vm.Vector2(
+                                          event.localPosition.dx - offset.dx,
+                                          event.localPosition.dy - offset.dy);
+                                    });
+                                  }
+                                } else if (canvasState == CanvasState.erase) {
+                                  if (_lineEraser == null) {
+                                    _lineEraser = LineEraser(
+                                        lineStart!,
+                                        vm.Vector2(
+                                            event.localPosition.dx - offset.dx,
+                                            event.localPosition.dy -
+                                                offset.dy));
+                                  } else {
+                                    _lineEraser!.nextPoint(
+                                        event.localPosition.dx - offset.dx,
+                                        event.localPosition.dy - offset.dy);
+                                  }
+                                  bool hasRemoved = false;
+                                  for (int i = _paintElements!.length - 1;
+                                      i >= 0;
+                                      i--) {
+                                    if (_paintElements![i]
+                                        .intersectAsSegments(_lineEraser!)) {
+                                      _paintElements!.removeAt(i);
+                                      hasRemoved = true;
+                                    }
+                                  }
+                                  if (hasRemoved) {
+                                    setState(() {});
+                                  }
+                                } else if (canvasState == CanvasState.form) {
+                                  if (Forms.line == selectedForm) {
+                                    setState(() {
+                                      if (_lineForm == null) {
+                                        _lineForm = LineForm(
+                                            vm.Vector2(
+                                                event.localPosition.dx -
+                                                    offset.dx,
+                                                event.localPosition.dy -
+                                                    offset.dy),
+                                            vm.Vector2(
+                                                event.localPosition.dx -
+                                                    offset.dx,
+                                                event.localPosition.dy -
+                                                    offset.dy),
+                                            _currentPaint);
+                                        print("Line Form was null");
+                                      } else {
+                                        _lineForm!.setEndpoint(
+                                            event.localPosition.dx - offset.dx,
+                                            event.localPosition.dy - offset.dy);
+                                        print("Line Form was not null");
+                                      }
+                                    });
+                                  }
+                                }
+                              },
+                              onPointerUp: (event) {
+                                _pointerMap.remove(event.pointer);
+                                if (canvasState == CanvasState.zoom &&
+                                    _pointerMap.isEmpty) {
+                                  canvasState = CanvasState.pan;
+                                }
+                                if (canvasState == CanvasState.draw) {
+                                  if (_currentLine != null) {
+                                    if (_currentLine!.fragments.length > 1) {
+                                      setState(() {
+                                        _paintElements!.add(_currentLine!);
+                                        _currentLine = null;
+                                      });
+                                    } else if (_currentLine!.fragments.length ==
+                                        1) {
+                                      setState(() {
+                                        _paintElements!.add(Point(
+                                            event.localPosition.dx - offset.dx,
+                                            event.localPosition.dy - offset.dy,
+                                            _currentPaint));
+                                        _currentLine = null;
+                                        print("Added a Point");
+                                      });
+                                    }
+                                  } else if (lineStart != null) {
+                                    setState(() {
+                                      _paintElements!.add(Point(
+                                          event.localPosition.dx - offset.dx,
+                                          event.localPosition.dy - offset.dy,
+                                          _currentPaint));
+                                      print("Added a Point2");
+                                    });
+                                  }
+                                } else if (canvasState == CanvasState.form) {
+                                  if (Forms.line == selectedForm) {
+                                    if (_lineForm != null) {
+                                      _lineForm!.setEndpoint(
+                                          event.localPosition.dx - offset.dx,
+                                          event.localPosition.dy - offset.dy);
+                                      setState(() {
+                                        if (_lineForm!.isLineAPoint()) {
+                                          _paintElements!.add(Point(
+                                              _lineForm!.a.x,
+                                              _lineForm!.a.y,
+                                              _currentPaint));
+                                          print("Added a Point from LineForm");
+                                        } else {
+                                          _paintElements!.add(_lineForm!);
+                                          _lineForm = null;
+                                          print("Added a Line Form");
+                                        }
+                                      });
+                                      _lineForm = null;
+                                    } else {
+                                      print("Line form is null");
+                                    }
+                                  }
+                                }
+                                // setState(() {})
+                              },
+                              //TODO Test Scrollview
+                              child: SizedBox.expand(
+                                  child: Stack(
+                                fit: StackFit.expand,
+                                children: [
+                                  ClipRRect(
+                                    child: CustomPaint(
+                                      foregroundPainter: CanvasCustomPainter(
+                                          _paintElements!,
+                                          _currentLine,
+                                          _lineForm,
+                                          offset,
+                                          _currentPaint),
+                                      // painter: BackgroundPainter(offset),
+                                      willChange: true,
+                                      child: CustomPaint(
+                                        painter: BackgroundPainter(offset,
+                                            _noteBook.defaultBackground),
+                                        willChange: false,
+                                      ),
+                                    ),
+                                  ),
+                                  //TODO
+                                  // testTextElement.getWidget(
+                                  //     context,
+                                  //     offset,
+                                  //     canvasState != CanvasState.pan
+                                  //         ? true
+                                  //         : false, () {
+                                  //   setState(() {
+                                  //     // _paintElements!.add(testTextElement);
+                                  //   });
+                                  // })
+                                ],
+                              )),
                             ),
-                          ),
-                        ),
-                      ),
-                      // ),
-                    ))
-                  ],
-                ),
-    );
+                            _testPaintImage.build(offset,
+                                canvasState != CanvasState.pan ? true : false)
+                          ]),
+                        ))
+                      ],
+                    ),
+                  ));
   }
 }
 
@@ -1102,10 +1014,12 @@ class BackgroundPainter extends CustomPainter {
   Background background;
   BackgroundPainter(this.offset, this.background);
   final int lineDistance = 20;
+  final int firstLineY = 40;
   final int checkeredDistance = 20;
   @override
   void paint(Canvas canvas, Size size) {
     Paint backgroundPaint = Paint()..color = Colors.black;
+    print("Background: ${background.toString()}");
     if (background == Background.white) {
       return;
     } else if (background == Background.black) {
@@ -1129,7 +1043,15 @@ class BackgroundPainter extends CustomPainter {
             backgroundPaint);
       }
     } else if (background == Background.lines) {
-      for (int i = 0; i < size.height; i += lineDistance) {
+      Paint linePaint = Paint()
+        ..color = Colors.red
+        ..strokeWidth = 1;
+      //Red horizontal line at y = 5
+      canvas.drawLine(
+          Offset(offset.dx, firstLineY.toDouble() + offset.dy),
+          Offset(size.width - offset.dx, firstLineY.toDouble() + offset.dy),
+          linePaint);
+      for (int i = 40; i < size.height; i += lineDistance) {
         canvas.drawLine(
             Offset(-lineDistance.toDouble(), i.toDouble()) +
                 offset % lineDistance.toDouble(),
