@@ -2,15 +2,20 @@
 
 import 'dart:io';
 import 'package:appwrite/appwrite.dart';
-
+import 'package:flash/flash.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:appwrite/appwrite.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+// import 'package:flutter/widgets.dart';
+// import 'package:flutter/material.dart';
 import 'package:skynote/appwrite.dart';
 import 'package:skynote/main.dart';
 import 'package:skynote/models/base_paint_element.dart';
 import 'package:skynote/models/note_book.dart';
 import 'package:skynote/models/paint_image.dart';
+import 'package:skynote/models/text.dart';
+import 'package:pasteboard/pasteboard.dart';
 
 String _formsToString(Forms form) {
   switch (form) {
@@ -40,6 +45,7 @@ class TopBar extends StatelessWidget {
   NoteBook noteBook;
   CanvasState canvasState;
   double currScale;
+  Color selectedPaintColor;
   final ValueChanged<Color> onChangPaintColor;
   final ValueChanged<double> onChangeStrokeWidth;
   final ValueChanged<Forms> onChangeForm;
@@ -51,6 +57,8 @@ class TopBar extends StatelessWidget {
   final VoidCallback onZoomIn;
   final VoidCallback onZoomOut;
   final VoidCallback onGoToHome;
+  final ValueChanged<String> onCreateTextElement;
+  final ValueChanged<String> onImagePaste;
 
   TopBar(
     this.scaffoldKey,
@@ -64,7 +72,8 @@ class TopBar extends StatelessWidget {
     this.backgroundItems,
     this.noteBook,
     this.canvasState,
-    this.currScale, {
+    this.currScale,
+    this.selectedPaintColor, {
     required this.onChangPaintColor,
     required this.onChangeStrokeWidth,
     required this.onChangeForm,
@@ -76,15 +85,35 @@ class TopBar extends StatelessWidget {
     required this.onZoomIn,
     required this.onZoomOut,
     required this.onGoToHome,
+    required this.onCreateTextElement,
+    required this.onImagePaste,
   });
 
   Storage appwriteStorage = AppWriteCustom().getAppwriteStorage();
+  TextEditingController newTextFieldController = TextEditingController();
+
+  void showFlashTopBar(BuildContext context, String text, bool success) {
+    showFlash(
+        context: context,
+        duration: const Duration(seconds: 1, milliseconds: 500),
+        builder: (_, controller) {
+          return Flash(
+              controller: controller,
+              position: FlashPosition.top,
+              behavior: FlashBehavior.floating,
+              child: FlashBar(
+                content: Text(text,
+                    style:
+                        TextStyle(color: success ? Colors.green : Colors.red)),
+              ));
+        });
+  }
 
   @override
   Widget build(BuildContext context) {
     // print("TopBar build");
-    // print(currentPaint.color);
-    // print(colorItems);
+    // print(currentPaint.color.runtimeType);
+    // print(colorItems.color.runtimeType);
     return Container(
       padding: const EdgeInsets.all(8),
       height: 70,
@@ -107,8 +136,50 @@ class TopBar extends StatelessWidget {
                 }
               },
             ),
+            // Create a TextField
+            IconButton(
+              icon: const Icon(Icons.text_fields),
+              color: Colors.black,
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (BuildContext context) {
+                    return AlertDialog(
+                      title: const Text('Enter text'),
+                      content: TextField(
+                        onChanged: (String text) {
+                          newTextFieldController.text = text;
+                        },
+                      ),
+                      actions: <Widget>[
+                        FlatButton(
+                          child: const Text('CANCEL'),
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                          },
+                        ),
+                        FlatButton(
+                          child: const Text('OK'),
+                          onPressed: () {
+                            onCreateTextElement(newTextFieldController.text);
+                            // paintElements!.add(
+                            //   TextElement(
+                            //     newTextFieldController.text,
+                            //     offset,
+                            //     currentPaint,
+                            //   ),
+                            // );
+                            Navigator.of(context).pop();
+                          },
+                        ),
+                      ],
+                    );
+                  },
+                );
+              },
+            ),
             DropdownButton(
-              value: currentPaint.color,
+              value: selectedPaintColor,
               items: colorItems.map(
                 (color) {
                   return DropdownMenuItem(
@@ -175,6 +246,48 @@ class TopBar extends StatelessWidget {
                 value: selectedForm,
                 onChanged: (Forms? newValue) {
                   onChangeForm(newValue!);
+                }),
+            IconButton(
+                icon: Icon(Icons.paste),
+                onPressed: () async {
+                  // try {
+                  //   final imageBytes = await Pasteboard.image;
+                  //   print("Image");
+                  //   print("imageBytes: ${imageBytes!.length}");
+
+                  //   final tempDir = await getTemporaryDirectory();
+                  //   File file =
+                  //       await File('${tempDir.path}/image.png').create();
+                  //   file.writeAsBytesSync(imageBytes);
+                  //   onImagePaste(file.path);
+                  // } catch (e) {
+                  //   print(e);
+                  // } catch (e) {
+                  //   print(e);
+                  // }
+                  try {
+                    List<String> filePaths = await Pasteboard.files();
+                    print("Files");
+                    if (filePaths != null && filePaths.isNotEmpty) {
+                      print("files: ${filePaths.length}");
+                      bool gotAnImage = false;
+                      for (String filePath in filePaths) {
+                        print(filePath);
+                        if (filePath.endsWith(".png") ||
+                            filePath.endsWith(".jpg")) {
+                          gotAnImage = true;
+                          onImagePaste(filePath);
+                        }
+                      }
+                      if (!gotAnImage) {
+                        showFlashTopBar(context, "No image found", false);
+                      }
+                    } else {
+                      showFlashTopBar(context, "No files found", false);
+                    }
+                  } catch (e) {
+                    print(e);
+                  }
                 }),
             // Eraser Button
             IconButton(

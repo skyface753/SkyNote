@@ -59,9 +59,12 @@
 			<string>Editor</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
+			<!-- Share to SkyNote -->
+							<string>ShareMedia</string>
+
 				<!-- TODO Replace this value: -->
 				<!-- Copied from GoogleService-Info.plist key REVERSED_CLIENT_ID -->
-				<string>com.googleusercontent.apps.244156996836-79kchr7r10f2qnqln9b81v58dnmg38li</string>
+				<!-- <string>com.googleusercontent.apps.244156996836-79kchr7r10f2qnqln9b81v58dnmg38li</string> -->
 			</array>
 		</dict>
 	</array>

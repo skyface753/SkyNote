@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:skynote/models/base_paint_element.dart';
+import 'package:vector_math/vector_math_64.dart' as vm;
 
 class NoteBook {
   String? appwriteFileId;
@@ -120,6 +121,7 @@ class NoteSection {
 
 class Note {
   String name;
+  Offset? lastPos;
   List<PaintElement> elements = [];
 
   Note(
@@ -138,10 +140,19 @@ class Note {
     return {
       'name': name,
       'elements': elements.map((element) => element.toJson()).toList(),
+      'lastPos': lastPos != null
+          ? {
+              'x': lastPos?.dx,
+              'y': lastPos?.dy,
+            }
+          : null,
     };
   }
 
   Note.fromJson(Map<String, dynamic> json, VoidCallback paintImageCallback)
       : name = json['name'],
-        elements = PaintElement.fromJson(json['elements'], paintImageCallback);
+        elements = PaintElement.fromJson(json['elements'], paintImageCallback),
+        lastPos = json['lastPos'] != null
+            ? Offset(json['lastPos']['x'], json['lastPos']['y'])
+            : null;
 }

@@ -1,5 +1,6 @@
 import 'dart:ui';
 
+import 'package:flutter/material.dart';
 import 'package:skynote/models/base_paint_element.dart';
 import 'package:skynote/models/line_fragment.dart';
 import 'package:skynote/models/point.dart';
@@ -11,8 +12,7 @@ class Line extends PaintElement {
   bool isLineRendered = false;
 
   @override
-  void draw(Canvas canvas, Offset offset, double width, double height) {
-    // List<Path> paths = [];
+  void drawCurrent(Canvas canvas, Offset offset, double width, double height) {
     Path path = Path();
     Path? _currentPath;
     isLineRendered = false;
@@ -22,9 +22,32 @@ class Line extends PaintElement {
         path.addPath(_currentPath, Offset.zero);
         isLineRendered = true;
       }
-      // path.addPath(, Offset.zero);
     }
-    canvas.drawPath(path, paint);
+    if (isLineRendered) {
+      canvas.drawPath(path, paint);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context, Offset offset, double width, double height,
+      bool disableGestureDetection, VoidCallback refreshFromElement) {
+    Path path = Path();
+    Path? currentPath;
+    isLineRendered = false;
+    for (LineFragment fragment in fragments) {
+      currentPath = fragment.getPath(offset, width, height);
+      if (currentPath != null) {
+        path.addPath(currentPath, Offset.zero);
+        isLineRendered = true;
+      }
+    }
+    if (isLineRendered) {
+      path.close();
+    }
+    return CustomPaint(
+      painter: LinePainter(path, paint),
+    );
+    // TODO: implement build
   }
 
   @override
@@ -60,4 +83,19 @@ class Line extends PaintElement {
       : fragments = List<LineFragment>.from(
             json['fragments'].map((e) => LineFragment.fromJson(e))),
         super(paintConverter.paintFromJson(json['paint']));
+}
+
+class LinePainter extends CustomPainter {
+  Path path;
+  Paint _paint;
+  LinePainter(this.path, this._paint);
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.drawPath(path, _paint);
+  }
+
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) {
+    return false;
+  }
 }

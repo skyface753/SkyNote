@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:appwrite/appwrite.dart';
@@ -15,83 +16,230 @@ import 'package:vector_math/vector_math_64.dart' as vm;
 
 Storage appwriteCustomStorage = AppWriteCustom().getAppwriteStorage();
 
+// Scale / 10 to get a better size for the image (Dont cover the whole screen)
+// const int initWHReducer = 10;
+
 class PaintImage extends PaintElement {
   String appwriteFileId;
   vm.Vector2 a;
-  ui.Image? image;
   Uint8List? _imageData;
+  int width;
+  int height;
+  double scale = 10;
 
-  PaintImage(this.appwriteFileId, this.a, ui.Paint paint,
-      VoidCallback refreshPaintWidget)
+  PaintImage(this.appwriteFileId, this.a, ui.Paint paint, this.width,
+      this.height, VoidCallback refreshPaintWidget)
       : super(paint) {
+    // width = (width / initWHReducer).round();
+    // height = (height / initWHReducer).round();
     downloadImage(refreshPaintWidget);
   }
 
+  Offset? startPointDragAndDrop;
+
   @override
-  void draw(ui.Canvas canvas, ui.Offset offset, double width, double height) {
-    if (image == null) {
-      Rect rect = Rect.fromLTWH(offset.dx + a.x, offset.dy + a.y, 100, 100);
-      canvas.drawRect(rect, paint);
-      return;
+  Widget? build(
+      BuildContext context,
+      Offset offset,
+      double screenWidth,
+      double screenHeight,
+      bool disableGestureDetection,
+      VoidCallback refreshFromElement) {
+    if (_imageData == null) {
+      return null;
     }
-    //TODO Replace with dynamic width and height
-    double imageWidth = 100;
-    double imageHeight = 100;
+    double diagoLength =
+        sqrt(pow(width, 2) + pow(height, 2)); // * initWHReducer;
+    print("diagoLength: $diagoLength");
+    return StatefulBuilder(builder: (context, setState) {
+      return Positioned(
+        left: offset.dx + a.x,
+        top: offset.dy + a.y,
+        child: disableGestureDetection
+            ? Image.memory(_imageData!, scale: scale)
+            : Stack(
+                alignment: Alignment.bottomRight,
+                children: [
+                  GestureDetector(
+                    onPanStart: (details) {
+                      startPointDragAndDrop = details.localPosition;
+                    },
+                    onPanUpdate: (details) {
+                      if (startPointDragAndDrop == null) {
+                        return;
+                      }
+                      print("Drag and drop");
+                      double dx =
+                          details.localPosition.dx - startPointDragAndDrop!.dx;
+                      double dy =
+                          details.localPosition.dy - startPointDragAndDrop!.dy;
+                      setState(() {
+                        a = vm.Vector2(a.x + dx, a.y + dy);
+                      });
+                      startPointDragAndDrop = details.localPosition;
+                    },
+                    onPanEnd: (details) {
+                      startPointDragAndDrop = null;
+                    },
+                    child: Image.memory(_imageData!, scale: scale),
+                  ),
+                  Container(
+                    height: 10,
+                    width: 10,
+                    color: Colors.red,
+                    // Scaling the image
+                    child: GestureDetector(
+                      onPanUpdate: (details) {
+                        // print("Scale");
+                        setState(() {
+                          double deltaCurrent = sqrt(pow(
+                                  (a.x + offset.dx) - details.globalPosition.dx,
+                                  2) +
+                              pow((a.y + offset.dy) - details.globalPosition.dy,
+                                  2));
+                          double testScale = (diagoLength / (deltaCurrent));
+                          scale = (num.parse(testScale.toStringAsFixed(2)))
+                              .toDouble();
+                          print(
+                              "deltaCurrent: $deltaCurrent deltaOriginal: $diagoLength testScale: $scale");
+                          // scale = min(max(scale + details.delta.dy, 1), 100);
+                          // scale -= details.delta.dy;
+                        });
+                      },
+                      child: Container(
+                          color: Colors.yellow, width: 10, height: 10),
+                    ),
+                  )
+                ],
+              ),
+      );
+    });
+
     // a = oben Links
     // a2 = oben Rechts
     // b = unten Links
     // b2 = unten Rechts
-    vm.Vector2 a2 = vm.Vector2(a.x + imageWidth, a.y);
-    vm.Vector2 b = vm.Vector2(a.x, a.y + imageHeight);
+    print("Refresh paint image");
+    // double imageWidth = width.toDouble();
+    // double imageHeight = height.toDouble();
+    // RECT of image
+    vm.Vector2 a2 = vm.Vector2(a.x + width, a.y);
+    vm.Vector2 b = vm.Vector2(a.x, a.y + height);
     vm.Vector2 b2 = vm.Vector2(a2.x, b.y);
-    bool aInBounds = (-offset.dx <= a.x &&
-        a.x <= -offset.dx + width &&
-        -offset.dy <= a.y &&
-        a.y <= -offset.dy + height);
-    bool a2InBounds = (-offset.dx <= a2.x &&
-        a2.x <= -offset.dx + width &&
-        -offset.dy <= a2.y &&
-        a2.y <= -offset.dy + height);
-    bool bInBounds = (-offset.dx <= b.x &&
-        b.x <= -offset.dx + width &&
-        -offset.dy <= b.y &&
-        b.y <= -offset.dy + height);
-    bool b2InBounds = (-offset.dx <= b2.x &&
-        b2.x <= -offset.dx + width &&
-        -offset.dy <= b2.y &&
-        b2.y <= -offset.dy + height);
-    if (aInBounds || a2InBounds || bInBounds || b2InBounds) {
-      Rect rect = Rect.fromLTWH(offset.dx + a.x, offset.dy + a.y, 100, 100);
-      paintImage(canvas: canvas, rect: rect, image: image!);
-    }
-  }
 
-  Widget build(Offset offset, bool isDisabled) {
-    if (image == null) {
-      return Container();
+    bool aInBounds = (-offset.dx <= a.x &&
+        a.x <= -offset.dx + screenWidth &&
+        -offset.dy <= a.y &&
+        a.y <= -offset.dy + screenHeight);
+    bool a2InBounds = (-offset.dx <= a2.x &&
+        a2.x <= -offset.dx + screenWidth &&
+        -offset.dy <= a2.y &&
+        a2.y <= -offset.dy + screenHeight);
+    bool bInBounds = (-offset.dx <= b.x &&
+        b.x <= -offset.dx + screenWidth &&
+        -offset.dy <= b.y &&
+        b.y <= -offset.dy + screenHeight);
+    bool b2InBounds = (-offset.dx <= b2.x &&
+        b2.x <= -offset.dx + screenHeight &&
+        -offset.dy <= b2.y &&
+        b2.y <= -offset.dy + screenHeight);
+    if (aInBounds || a2InBounds || bInBounds || b2InBounds) {
+      if (_imageData == null) {
+        return Positioned(
+          left: offset.dx + a.x,
+          top: offset.dy + a.y,
+          child: Container(
+            width: width.toDouble() * scale,
+            height: height.toDouble() * scale,
+            child: Center(
+              child: CircularProgressIndicator(),
+            ),
+          ),
+        );
+      } else {
+        return StatefulBuilder(builder: (context, setState) {
+          return Positioned(
+            left: offset.dx + a.x,
+            top: offset.dy + a.y,
+            child: disableGestureDetection
+                ? Image.memory(_imageData!, scale: 0.2)
+                : Stack(
+                    alignment: Alignment.bottomRight,
+                    children: [
+                      GestureDetector(
+                        onPanStart: (details) {
+                          startPointDragAndDrop = details.localPosition;
+                        },
+                        onPanUpdate: (details) {
+                          if (startPointDragAndDrop == null) {
+                            return;
+                          }
+                          print("Drag and drop");
+                          double dx = details.localPosition.dx -
+                              startPointDragAndDrop!.dx;
+                          double dy = details.localPosition.dy -
+                              startPointDragAndDrop!.dy;
+                          setState(() {
+                            a = vm.Vector2(a.x + dx, a.y + dy);
+                            a2 = vm.Vector2(a2.x + dx, a2.y + dy);
+                            b = vm.Vector2(b.x + dx, b.y + dy);
+                            b2 = vm.Vector2(b2.x + dx, b2.y + dy);
+                          });
+                          startPointDragAndDrop = details.localPosition;
+                        },
+                        onPanEnd: (details) {
+                          startPointDragAndDrop = null;
+                        },
+                        child: Image.memory(_imageData!, scale: scale),
+                      ),
+                      Container(
+                        height: 10,
+                        width: 10,
+                        color: Colors.red,
+                        // Scaling the image
+                        child: GestureDetector(
+                          onPanUpdate: (details) {
+                            // print("Scale");
+                            // B2 = unten Rechts
+                            // print("dx: ${details.localPosition.dx}");
+                            //TODO !!!!!
+                            double currX =
+                                details.globalPosition.dx - offset.dx;
+                            double currY =
+                                details.globalPosition.dy - offset.dy;
+                            double diagoPos =
+                                sqrt(pow(currX - a.x, 2) + pow(currY - a.y, 2));
+                            double diagoOrig =
+                                sqrt(pow(a.x - b2.x, 2) + pow(a.y - b2.y, 2));
+                            print("diagoPos: $diagoPos diagoOrig: $diagoOrig");
+                            scale = diagoPos / diagoOrig;
+                            print("scale: $scale");
+                            // double newWidth = sqrt(pow(currX - a.x, 2));
+                            // double newHeight = sqrt(pow(currY - a.y, 2));
+                            // print("a.x ${a.x} currX: $currX currY: $currY newWidth: $newWidth newHeight: $newHeight");
+                            setState(() {});
+                          },
+                          child: Container(
+                              color: Colors.yellow, width: 10, height: 10),
+                        ),
+                      )
+                    ],
+                  ),
+          );
+        });
+      }
     }
-    return Positioned(
-        left: offset.dx + a.x,
-        top: offset.dy + a.y,
-        child: SizedBox(
-            width: 100,
-            height: 100,
-            child: AbsorbPointer(
-                absorbing: isDisabled,
-                child: Listener(
-                  onPointerDown: ((event) => {print("PointerDown Image")}),
-                  child: Image.memory(_imageData!),
-                ))));
+    return null;
   }
 
   void downloadImage(VoidCallback callback) async {
     Uint8List fileBytes = await appwriteCustomStorage.getFileDownload(
         bucketId: '62e40e4e2d262cc2e179', fileId: appwriteFileId);
     _imageData = fileBytes;
-    final ui.Codec codec = await ui.instantiateImageCodec(fileBytes);
+    // final ui.Codec codec = await ui.instantiateImageCodec(fileBytes);
 
-    final ui.Image image = (await codec.getNextFrame()).image;
-    this.image = image;
+    // final ui.Image image = (await codec.getNextFrame()).image;
+    // this.image = image;
     print("Image downloaded and setted");
     callback();
   }
@@ -111,6 +259,8 @@ class PaintImage extends PaintElement {
       'appwriteFileId': appwriteFileId,
       'aX': a.x,
       'aY': a.y,
+      'width': width,
+      'height': height,
       'paint': paintConverter.paintToJson(paint),
     };
   }
@@ -118,6 +268,8 @@ class PaintImage extends PaintElement {
   PaintImage.fromJson(Map<String, dynamic> json, VoidCallback imageLoadCallback)
       : appwriteFileId = json['appwriteFileId'],
         a = vm.Vector2(json['aX'], json['aY']),
+        width = json['width'] ?? 100,
+        height = json['height'] ?? 100,
         super(paintConverter.paintFromJson(json['paint'])) {
     downloadImage(imageLoadCallback);
   }

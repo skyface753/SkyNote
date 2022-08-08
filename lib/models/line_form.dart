@@ -1,5 +1,6 @@
 import 'dart:ui';
 
+import 'package:flutter/material.dart';
 import 'package:skynote/models/base_paint_element.dart';
 import 'package:skynote/models/line_eraser.dart';
 import 'package:skynote/models/line_fragment.dart';
@@ -17,11 +18,24 @@ class LineForm extends PaintElement {
     b = vm.Vector2(x, y);
   }
 
-  @override
-  void draw(Canvas canvas, Offset offset, double width, double height) {
+  void drawCurrent(Canvas canvas, Offset offset, double width, double height) {
     // Todo Check if line is in bounds
     canvas.drawLine(Offset(a.x + offset.dx, a.y + offset.dy),
         Offset(b.x + offset.dx, b.y + offset.dy), paint);
+  }
+
+  @override
+  Widget? build(
+      BuildContext context,
+      Offset offset,
+      double width,
+      double height,
+      bool disableGestureDetection,
+      VoidCallback refreshFromElement) {
+    //TODO Check if line is in bounds
+    return CustomPaint(
+      painter: LineFormPainter(this, offset, width, height),
+    );
   }
 
   @override
@@ -75,10 +89,45 @@ class LineForm extends PaintElement {
       : a = vm.Vector2(json['aX'], json['aY']),
         b = vm.Vector2(json['bX'], json['bY']),
         super(paintConverter.paintFromJson(json['paint']));
+
+  bool equals(LineForm? lineForm) {
+    if (lineForm == null) {
+      return false;
+    }
+    if (a.x == lineForm.a.x &&
+        a.y == lineForm.a.y &&
+        b.x == lineForm.b.x &&
+        b.y == lineForm.b.y) {
+      return true;
+    } else {
+      return false;
+    }
+  }
 }
 
 const double _epsilon = 1e-10;
 
 bool _isZero(double d) {
   return d.abs() < _epsilon;
+}
+
+class LineFormPainter extends CustomPainter {
+  LineForm lineForm;
+  Offset offset;
+  double width;
+  double height;
+  LineFormPainter(this.lineForm, this.offset, this.width, this.height);
+  @override
+  void paint(Canvas canvas, Size size) {
+    //TODO Check if line is in bounds
+    canvas.drawLine(
+        Offset(lineForm.a.x + offset.dx, lineForm.a.y + offset.dy),
+        Offset(lineForm.b.x + offset.dx, lineForm.b.y + offset.dy),
+        lineForm.paint);
+  }
+
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) {
+    return true;
+  }
 }

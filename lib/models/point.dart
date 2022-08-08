@@ -1,5 +1,7 @@
 import 'dart:ui';
 
+import 'package:flutter/material.dart';
+import 'package:flutter/src/widgets/framework.dart';
 import 'package:skynote/helpers/paint_convert.dart';
 import 'package:skynote/models/base_paint_element.dart';
 import 'package:skynote/models/line_eraser.dart';
@@ -27,6 +29,29 @@ class Point extends PaintElement {
     } else {
       // print("Not drawing point");
       isRenderd = false;
+    }
+  }
+
+  @override
+  Widget? build(
+      BuildContext context,
+      Offset offset,
+      double width,
+      double height,
+      bool disableGestureDetection,
+      VoidCallback refreshFromElement) {
+    bool isInBounds = -offset.dx <= x &&
+        x <= -offset.dx + width &&
+        -offset.dy <= y &&
+        y <= -offset.dy + height;
+    if (isInBounds) {
+      isRenderd = true;
+      return CustomPaint(
+        painter: PointPainter(this, offset, width, height),
+      );
+    } else {
+      isRenderd = false;
+      return null;
     }
   }
 
@@ -71,5 +96,22 @@ class Point extends PaintElement {
       return true;
     }
     return false;
+  }
+}
+
+class PointPainter extends CustomPainter {
+  Point point;
+  Offset offset;
+  double width;
+  double height;
+  PointPainter(this.point, this.offset, this.width, this.height);
+  @override
+  void paint(Canvas canvas, Size size) {
+    point.draw(canvas, offset, width, height);
+  }
+
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) {
+    return true;
   }
 }
