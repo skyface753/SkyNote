@@ -5,9 +5,7 @@ import 'dart:math';
 import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flash/flash.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
-import 'package:pasteboard/pasteboard.dart';
 
 import 'package:crypto/crypto.dart';
 
@@ -16,6 +14,7 @@ import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:skynote/appwrite.dart';
 import 'package:skynote/models/base_paint_element.dart';
+import 'package:skynote/models/lasso_selection.dart';
 import 'package:skynote/models/line.dart';
 import 'package:skynote/models/line_eraser.dart';
 import 'package:skynote/models/line_form.dart';
@@ -27,6 +26,7 @@ import 'package:skynote/models/paint_image.dart';
 import 'package:skynote/models/pencils.dart';
 import 'package:skynote/models/point.dart';
 import 'package:skynote/models/text.dart';
+import 'package:skynote/screens/all_online_images.dart';
 import 'package:skynote/screens/login_screen.dart';
 import 'package:skynote/screens/notebook_selection_screen.dart';
 import 'package:skynote/widgets/topbar.dart';
@@ -57,6 +57,7 @@ class MyApp extends StatelessWidget {
         routes: {
           '/': (context) => NotebookSelectionScreen(),
           '/login': (context) => LoginScreen(),
+          '/online/images': (context) => AllOnlineImagesScreen()
           // '/notebook': (context) => InfiniteCanvasPage(),
         },
         debugShowCheckedModeBanner: false,
@@ -64,7 +65,7 @@ class MyApp extends StatelessWidget {
   }
 }
 
-enum CanvasState { pan, draw, erase, zoom, form }
+enum CanvasState { pan, draw, erase, zoom, form, lasso }
 
 enum Forms { none, line, rectangle, circle, triangle }
 
@@ -87,8 +88,12 @@ String _canvasStateToString(CanvasState state) {
       return 'zoom';
     case CanvasState.form:
       return 'form';
+    case CanvasState.lasso:
+      return 'lasso';
   }
 }
+
+String imageStorageID = "62e40e4e2d262cc2e179";
 
 class InfiniteCanvasPage extends StatefulWidget {
   final String? noteBookId;
@@ -112,6 +117,9 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
   // late LineFragment _lineEraser;
   LineEraser? _lineEraser;
   Map<int, PointerMap> _pointerMap = {};
+
+  LassoSelection? _lassoSelection;
+  List<PaintElement>? _selectedElements;
 
   late String oldNotebookName;
 
@@ -138,7 +146,7 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
     print("Height: ${decodedImage.height}");
     InputFile inputFile = InputFile(path: file.path);
     var uploadedFile = await appwriteStorage.createFile(
-        bucketId: '62e40e4e2d262cc2e179', fileId: 'unique()', file: inputFile);
+        bucketId: imageStorageID, fileId: 'unique()', file: inputFile);
     print("File Uploaded");
     PaintImage newPaintImage = PaintImage(
         uploadedFile.$id,
@@ -746,6 +754,15 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                                     canvasState = CanvasState.erase;
                                   }
                                 }),
+                            onChangeLassoMode: () {
+                              setState(() {
+                                if (canvasState == CanvasState.lasso) {
+                                  canvasState = CanvasState.draw;
+                                } else {
+                                  canvasState = CanvasState.lasso;
+                                }
+                              });
+                            },
                             onImagePicker: () async {
                               print("Add Image");
                               FilePickerResult? result =
@@ -828,11 +845,25 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                                             stylusAvailable) {
                                           canvasState = CanvasState.pan;
                                         }
+                                        if (canvasState == CanvasState.lasso) {
+                                          _lassoSelection = LassoSelection(
+                                              vm.Vector2(
+                                                  event.localPosition.dx -
+                                                      offset.dx,
+                                                  event.localPosition.dy -
+                                                      offset.dy));
+                                          return;
+                                        }
                                         if (_pointerMap.length > 1) {
                                           print("More than one pointer");
                                           canvasState = CanvasState.zoom;
                                         } else if (canvasState ==
                                             CanvasState.draw) {
+                                          if (_lassoSelection != null ||
+                                              _selectedElements != null) {
+                                            _lassoSelection = null;
+                                            _selectedElements = [];
+                                          }
                                           lineStart = vm.Vector2(
                                               event.localPosition.dx -
                                                   offset.dx,
@@ -919,6 +950,27 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                                           }
                                           return;
                                         }
+                                        if (canvasState == CanvasState.lasso) {
+                                          setState(() {
+                                            if (_lassoSelection == null) {
+                                              _lassoSelection = LassoSelection(
+                                                  vm.Vector2(
+                                                      event.localPosition.dx -
+                                                          offset.dx,
+                                                      event.localPosition.dy -
+                                                          offset.dy));
+                                            } else {
+                                              _lassoSelection!.addLassoPoint(
+                                                  vm.Vector2(
+                                                      event.localPosition.dx -
+                                                          offset.dx,
+                                                      event.localPosition.dy -
+                                                          offset.dy));
+                                            }
+                                          });
+                                          return;
+                                        }
+
                                         if (canvasState == CanvasState.pan) {
                                           setState(() {
                                             offset += event.delta;
@@ -1036,6 +1088,32 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                                             _pointerMap.isEmpty) {
                                           canvasState = CanvasState.pan;
                                         }
+                                        if (canvasState == CanvasState.lasso) {
+                                          if (_lassoSelection == null) {
+                                            showFlashTopBar(
+                                                "Error in Lasso selection",
+                                                false);
+                                            return;
+                                          } else {
+                                            int count = 0;
+                                            _selectedElements = [];
+                                            for (int i = 0;
+                                                i < _paintElements!.length;
+                                                i++) {
+                                              if (_paintElements![i]
+                                                  .checkLassoSelection(
+                                                      _lassoSelection!)) {
+                                                _selectedElements!
+                                                    .add(_paintElements![i]);
+
+                                                count++;
+                                              }
+                                            }
+                                            print("Lasso Count: $count");
+                                            _lassoSelection = null;
+                                            setState(() {});
+                                          }
+                                        }
                                         if (canvasState == CanvasState.draw) {
                                           if (_currentLine != null) {
                                             if (_currentLine!.fragments.length >
@@ -1114,6 +1192,7 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                                                 // _paintElements!,
                                                 _currentLine,
                                                 _lineForm,
+                                                _lassoSelection,
                                                 offset,
                                               ),
                                               // painter: BackgroundPainter(offset),
@@ -1147,7 +1226,26 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                                             ? true
                                             : false, refreshFromElement: () {
                                       setState(() {});
+                                    }, onDeleteImage: (appwriteFileID) async {
+                                      await appwriteStorage.deleteFile(
+                                          bucketId: imageStorageID,
+                                          fileId: appwriteFileID);
+                                      setState(() {
+                                        _paintElements!.removeWhere((element) =>
+                                            element is PaintImage &&
+                                            (element as PaintImage)
+                                                    .appwriteFileId ==
+                                                appwriteFileID);
+                                        saveToAppwrite();
+                                      });
                                     }),
+                                    _selectedElements != null &&
+                                            _selectedElements!.isNotEmpty
+                                        ? LassoSelection.buildSelection(
+                                            _selectedElements!, offset, (() {
+                                            setState(() {});
+                                          }))
+                                        : Container(),
                                     // Image.file(File(
                                     //     "/Users/sebastian/Library/Containers/de.skyface753.skynote/Data/Library/Caches/image.png"))
                                     // testTextElement
@@ -1273,10 +1371,12 @@ class CanvasCustomPainter extends CustomPainter {
   // final Paint _drawingPaint;
   int paintElementsCount = 0;
   LineForm? _lineForm;
+  LassoSelection? _lassoSelection;
 
   CanvasCustomPainter(
     this._currentDrawingLine,
     this._lineForm,
+    this._lassoSelection,
     this.offset,
   );
 
@@ -1294,6 +1394,10 @@ class CanvasCustomPainter extends CustomPainter {
 
     if (_lineForm != null) {
       _lineForm!.drawCurrent(canvas, offset, size.width, size.height);
+    }
+
+    if (_lassoSelection != null) {
+      _lassoSelection!.drawCurrent(canvas, offset, size.width, size.height);
     }
   }
 

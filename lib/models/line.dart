@@ -2,6 +2,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:skynote/models/base_paint_element.dart';
+import 'package:skynote/models/lasso_selection.dart';
 import 'package:skynote/models/line_fragment.dart';
 import 'package:skynote/models/point.dart';
 import 'package:skynote/models/types.dart';
@@ -29,8 +30,14 @@ class Line extends PaintElement {
   }
 
   @override
-  Widget build(BuildContext context, Offset offset, double width, double height,
-      bool disableGestureDetection, VoidCallback refreshFromElement) {
+  Widget build(
+      BuildContext context,
+      Offset offset,
+      double width,
+      double height,
+      bool disableGestureDetection,
+      VoidCallback refreshFromElement,
+      ValueChanged<String> onDeleteImage) {
     Path path = Path();
     Path? currentPath;
     isLineRendered = false;
@@ -47,7 +54,22 @@ class Line extends PaintElement {
     return CustomPaint(
       painter: LinePainter(path, paint),
     );
+
     // TODO: implement build
+  }
+
+  @override
+  bool checkLassoSelection(LassoSelection lassoSelection) {
+    if (!isLineRendered) {
+      return false;
+    }
+    bool allIn = true;
+    for (LineFragment fragment in fragments) {
+      if (!fragment.checkLassoSelection(lassoSelection)) {
+        allIn = false;
+      }
+    }
+    return allIn;
   }
 
   @override
@@ -83,6 +105,82 @@ class Line extends PaintElement {
       : fragments = List<LineFragment>.from(
             json['fragments'].map((e) => LineFragment.fromJson(e))),
         super(paintConverter.paintFromJson(json['paint']));
+
+  @override
+  double getBottomY() {
+    if (fragments.isEmpty) {
+      return 0.0;
+    }
+    double bottomY = fragments.first.a.y;
+    for (LineFragment fragment in fragments) {
+      if (fragment.a.y > bottomY) {
+        bottomY = fragment.a.y;
+      }
+      if (fragment.b.y > bottomY) {
+        bottomY = fragment.b.y;
+      }
+    }
+    return bottomY;
+  }
+
+  @override
+  double getLeftX() {
+    if (fragments.isEmpty) {
+      return 0.0;
+    }
+    double leftX = fragments.first.a.x;
+    for (LineFragment fragment in fragments) {
+      if (fragment.a.x < leftX) {
+        leftX = fragment.a.x;
+      }
+      if (fragment.b.x < leftX) {
+        leftX = fragment.b.x;
+      }
+    }
+    return leftX;
+  }
+
+  @override
+  double getRightX() {
+    if (fragments.isEmpty) {
+      return 0.0;
+    }
+    double rightX = fragments.first.a.x;
+    for (LineFragment fragment in fragments) {
+      if (fragment.a.x > rightX) {
+        rightX = fragment.a.x;
+      }
+      if (fragment.b.x > rightX) {
+        rightX = fragment.b.x;
+      }
+    }
+    return rightX;
+  }
+
+  @override
+  double getTopY() {
+    if (fragments.isEmpty) {
+      return 0.0;
+    }
+    double topY = fragments.first.a.y;
+    for (LineFragment fragment in fragments) {
+      if (fragment.a.y < topY) {
+        topY = fragment.a.y;
+      }
+      if (fragment.b.y < topY) {
+        topY = fragment.b.y;
+      }
+    }
+    return topY;
+  }
+
+  @override
+  void moveByOffset(Offset offset) {
+    for (LineFragment fragment in fragments) {
+      fragment.moveByOffset(offset);
+    }
+    // TODO: implement moveByOffset
+  }
 }
 
 class LinePainter extends CustomPainter {

@@ -1,6 +1,7 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:skynote/models/lasso_selection.dart';
 import 'package:skynote/models/line.dart';
 import 'package:skynote/models/line_eraser.dart';
 import 'package:skynote/models/line_form.dart';
@@ -27,10 +28,18 @@ abstract class PaintElement {
       double width,
       double height,
       bool disableGestureDetection,
-      VoidCallback refreshFromElement);
+      VoidCallback refreshFromElement,
+      ValueChanged<String> onDeleteImage);
   bool intersectAsSegments(LineEraser lineEraser);
-
+  bool checkLassoSelection(LassoSelection lassoSelection);
   Map<String, dynamic> toJson();
+
+  double getLeftX();
+  double getRightX();
+  double getTopY();
+  double getBottomY();
+
+  void moveByOffset(Offset offset);
 
   // From Json
   static List<PaintElement> fromJson(
@@ -58,6 +67,7 @@ abstract class PaintElement {
     Offset offset,
     bool disableGestureDetection, {
     required VoidCallback refreshFromElement,
+    required ValueChanged<String> onDeleteImage,
   }) {
     double width = MediaQuery.of(context).size.width;
     double height = MediaQuery.of(context).size.height;
@@ -65,7 +75,7 @@ abstract class PaintElement {
 
     for (PaintElement paintElement in paintElements) {
       Widget? widget = paintElement.build(context, offset, width, height,
-          disableGestureDetection, refreshFromElement);
+          disableGestureDetection, refreshFromElement, onDeleteImage);
       if (widget != null) {
         widgets.add(widget);
       }

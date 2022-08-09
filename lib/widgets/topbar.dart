@@ -51,6 +51,7 @@ class TopBar extends StatelessWidget {
   final ValueChanged<Forms> onChangeForm;
   final ValueChanged<Background> onChangeBackground;
   final VoidCallback onChangeEraseMode;
+  final VoidCallback onChangeLassoMode;
   final VoidCallback onImagePicker;
   final VoidCallback onSave;
   final VoidCallback onVerify;
@@ -79,6 +80,7 @@ class TopBar extends StatelessWidget {
     required this.onChangeForm,
     required this.onChangeBackground,
     required this.onChangeEraseMode,
+    required this.onChangeLassoMode,
     required this.onImagePicker,
     required this.onSave,
     required this.onVerify,
@@ -147,6 +149,7 @@ class TopBar extends StatelessWidget {
                     return AlertDialog(
                       title: const Text('Enter text'),
                       content: TextField(
+                        autofocus: true,
                         onChanged: (String text) {
                           newTextFieldController.text = text;
                         },
@@ -297,7 +300,16 @@ class TopBar extends StatelessWidget {
               onPressed: () {
                 onChangeEraseMode();
               },
-            ), //Add an Image
+            ),
+            // Lasso Mode
+            IconButton(
+              icon: const Icon(Icons.line_axis),
+              color:
+                  CanvasState.lasso == canvasState ? Colors.red : Colors.black,
+              onPressed: () {
+                onChangeLassoMode();
+              },
+            ),
             //TODO
             IconButton(
                 onPressed: () async {

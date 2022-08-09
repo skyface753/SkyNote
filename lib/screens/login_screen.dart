@@ -19,6 +19,23 @@ class LoginScreenState extends State<LoginScreen> {
   final RoundedLoadingButtonController _btnController =
       RoundedLoadingButtonController();
 
+  void login() async {
+    try {
+      await appwriteAccount.createEmailSession(
+        email: _emailController.text,
+        password: _passwordController.text,
+      );
+      _btnController.success();
+      await SharedPreferences.getInstance().then((value) => {
+            value.setBool('isLoggedIn', true),
+            Navigator.pushReplacementNamed(context, '/')
+          });
+    } catch (e) {
+      _btnController.error();
+      print(e);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -31,37 +48,46 @@ class LoginScreenState extends State<LoginScreen> {
           children: <Widget>[
             TextField(
               controller: _emailController,
+              autofocus: true,
               decoration: const InputDecoration(
                 labelText: 'Email',
               ),
               onChanged: (value) => _btnController.reset(),
             ),
             TextField(
+              obscureText: true,
+              enableSuggestions: false,
+              autocorrect: false,
               controller: _passwordController,
               decoration: const InputDecoration(
                 labelText: 'Password',
               ),
               onChanged: (value) => _btnController.reset(),
+              onSubmitted: (value) => login(),
             ),
             RoundedLoadingButton(
                 child: Text('Login', style: TextStyle(color: Colors.white)),
                 controller: _btnController,
-                onPressed: () async {
-                  try {
-                    await appwriteAccount.createEmailSession(
-                      email: _emailController.text,
-                      password: _passwordController.text,
-                    );
-                    _btnController.success();
-                    await SharedPreferences.getInstance().then((value) => {
-                          value.setBool('isLoggedIn', true),
-                          Navigator.pushReplacementNamed(context, '/')
-                        });
-                  } catch (e) {
-                    _btnController.error();
-                    print(e);
-                  }
-                })
+                onPressed: () {
+                  login();
+                }),
+            // MaterialButton(
+            //   onPressed: () async {
+            //     Future result = appwriteAccount.createOAuth2Session(
+            //       provider: 'google',
+            //       success: 'https://appwrite.skyface.de/oauth/google/success',
+            //     );
+
+            //     result.then((response) {
+            //       print(response);
+            //     }).catchError(
+            //       (error) {
+            //         print(error.response);
+            //       },
+            //     );
+            //   },
+            //   child: Text('Login with Google'),
+            // )
           ],
         ),
       ),

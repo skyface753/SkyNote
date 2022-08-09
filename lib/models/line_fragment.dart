@@ -5,6 +5,8 @@ import 'dart:ui';
 import 'package:skynote/models/line_eraser.dart';
 import 'package:vector_math/vector_math_64.dart' as vm;
 
+import 'lasso_selection.dart';
+
 class LineFragment {
   final vm.Vector2 a;
   final vm.Vector2 b;
@@ -32,6 +34,24 @@ class LineFragment {
       // print("LineFragment: a and b are not in the display");
       return null;
     }
+  }
+
+  bool checkLassoSelection(LassoSelection lassoSelection) {
+    if (!isRenderd) {
+      return false;
+    }
+    if (lassoSelection.checkCollision(a) && lassoSelection.checkCollision(b)) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  void moveByOffset(Offset offset) {
+    a.x += offset.dx;
+    a.y += offset.dy;
+    b.x += offset.dx;
+    b.y += offset.dy;
   }
 
   bool intersectAsSegments(LineEraser other, bool byDistance) {

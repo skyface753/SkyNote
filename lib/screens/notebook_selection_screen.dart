@@ -52,6 +52,12 @@ class NotebookSelectionScreenState extends State<NotebookSelectionScreen> {
           title: const Text('Select a notebook'),
           actions: [
             IconButton(
+              onPressed: () {
+                Navigator.pushNamed(context, '/online/images');
+              },
+              icon: Icon(Icons.image),
+            ),
+            IconButton(
               icon: const Icon(Icons.refresh),
               onPressed: () async {
                 setState(() {});

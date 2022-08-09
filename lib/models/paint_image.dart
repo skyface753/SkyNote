@@ -6,6 +6,7 @@ import 'package:appwrite/appwrite.dart';
 import 'package:flutter/material.dart';
 import 'package:skynote/appwrite.dart';
 import 'package:skynote/models/base_paint_element.dart';
+import 'package:skynote/models/lasso_selection.dart';
 import 'package:skynote/models/line_eraser.dart';
 import 'dart:ui' as ui
     show Image, Paint, Canvas, Offset, Codec, instantiateImageCodec;
@@ -26,6 +27,7 @@ class PaintImage extends PaintElement {
   int width;
   int height;
   double scale = 10;
+  String? error;
 
   PaintImage(this.appwriteFileId, this.a, ui.Paint paint, this.width,
       this.height, VoidCallback refreshPaintWidget)
@@ -44,9 +46,34 @@ class PaintImage extends PaintElement {
       double screenWidth,
       double screenHeight,
       bool disableGestureDetection,
-      VoidCallback refreshFromElement) {
+      VoidCallback refreshFromElement,
+      ValueChanged<String> onDeleteImage) {
     if (_imageData == null) {
-      return null;
+      if (error == null) {
+        return Positioned(
+          left: offset.dx + a.x,
+          top: offset.dy + a.y,
+          child: Container(
+            width: width / scale,
+            height: height / scale,
+            child: Center(
+              child: CircularProgressIndicator(),
+            ),
+          ),
+        );
+      } else {
+        return Positioned(
+          left: offset.dx + a.x,
+          top: offset.dy + a.y,
+          child: Container(
+            width: width / scale,
+            height: height / scale,
+            child: Center(
+              child: Text(error!),
+            ),
+          ),
+        );
+      }
     }
     double diagoLength =
         sqrt(pow(width, 2) + pow(height, 2)); // * initWHReducer;
@@ -61,6 +88,23 @@ class PaintImage extends PaintElement {
                 alignment: Alignment.bottomRight,
                 children: [
                   GestureDetector(
+                    onLongPress: () {
+                      showMenu(
+                          context: context,
+                          position: RelativeRect.fromLTRB(
+                              a.x, a.y, screenWidth - a.x, screenHeight - a.y),
+                          items: [
+                            PopupMenuItem(
+                              value: 'delete',
+                              child: Text('Delete'),
+                            ),
+                          ]).then((value) {
+                        if (value == 'delete') {
+                          onDeleteImage(appwriteFileId);
+                          refreshFromElement();
+                        }
+                      });
+                    },
                     onPanStart: (details) {
                       startPointDragAndDrop = details.localPosition;
                     },
@@ -90,6 +134,7 @@ class PaintImage extends PaintElement {
                     // Scaling the image
                     child: GestureDetector(
                       onPanUpdate: (details) {
+                        //TODO
                         // print("Scale");
                         setState(() {
                           double deltaCurrent = sqrt(pow(
@@ -233,15 +278,20 @@ class PaintImage extends PaintElement {
   }
 
   void downloadImage(VoidCallback callback) async {
-    Uint8List fileBytes = await appwriteCustomStorage.getFileDownload(
-        bucketId: '62e40e4e2d262cc2e179', fileId: appwriteFileId);
-    _imageData = fileBytes;
-    // final ui.Codec codec = await ui.instantiateImageCodec(fileBytes);
+    try {
+      Uint8List fileBytes = await appwriteCustomStorage.getFileDownload(
+          bucketId: '62e40e4e2d262cc2e179', fileId: appwriteFileId);
+      _imageData = fileBytes;
+      // final ui.Codec codec = await ui.instantiateImageCodec(fileBytes);
 
-    // final ui.Image image = (await codec.getNextFrame()).image;
-    // this.image = image;
-    print("Image downloaded and setted");
-    callback();
+      // final ui.Image image = (await codec.getNextFrame()).image;
+      // this.image = image;
+      print("Image downloaded and setted");
+      callback();
+    } catch (e) {
+      error = "Error downloading image";
+      callback();
+    }
   }
 
   @override
@@ -272,5 +322,40 @@ class PaintImage extends PaintElement {
         height = json['height'] ?? 100,
         super(paintConverter.paintFromJson(json['paint'])) {
     downloadImage(imageLoadCallback);
+  }
+
+  @override
+  bool checkLassoSelection(LassoSelection lassoSelection) {
+    return false;
+    // TODO: implement checkLassoSelection
+    throw UnimplementedError();
+  }
+
+  @override
+  double getBottomY() {
+    return a.y + height;
+  }
+
+  @override
+  double getLeftX() {
+    return a.x;
+  }
+
+  @override
+  double getRightX() {
+    return a.x + width;
+  }
+
+  @override
+  double getTopY() {
+    return a.y;
+  }
+
+  @override
+  void moveByOffset(Offset offset) {
+    a.x += offset.dx;
+    a.y += offset.dy;
+
+    // TODO: implement moveByOffset
   }
 }

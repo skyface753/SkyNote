@@ -4,8 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/src/widgets/framework.dart';
 import 'package:skynote/helpers/paint_convert.dart';
 import 'package:skynote/models/base_paint_element.dart';
+import 'package:skynote/models/lasso_selection.dart';
 import 'package:skynote/models/line_eraser.dart';
 import 'package:skynote/models/types.dart';
+import 'package:vector_math/vector_math_64.dart' as vm;
 
 var paintConverter = PaintConverter();
 
@@ -39,7 +41,8 @@ class Point extends PaintElement {
       double width,
       double height,
       bool disableGestureDetection,
-      VoidCallback refreshFromElement) {
+      VoidCallback refreshFromElement,
+      ValueChanged<String> onDeleteImage) {
     bool isInBounds = -offset.dx <= x &&
         x <= -offset.dx + width &&
         -offset.dy <= y &&
@@ -96,6 +99,46 @@ class Point extends PaintElement {
       return true;
     }
     return false;
+  }
+
+  @override
+  bool checkLassoSelection(LassoSelection lassoSelection) {
+    if (!isRenderd) {
+      return false;
+    }
+    if (lassoSelection.checkCollision(vm.Vector2(x, y))) {
+      return true;
+    }
+    return false;
+    // TODO: implement checkLassoSelection
+    throw UnimplementedError();
+  }
+
+  @override
+  double getBottomY() {
+    return y;
+  }
+
+  @override
+  double getLeftX() {
+    return x;
+  }
+
+  @override
+  double getRightX() {
+    return x;
+  }
+
+  @override
+  double getTopY() {
+    return y;
+  }
+
+  @override
+  void moveByOffset(Offset offset) {
+    x += offset.dx;
+    y += offset.dy;
+    // TODO: implement moveByOffset
   }
 }
 

@@ -2,6 +2,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:skynote/models/base_paint_element.dart';
+import 'package:skynote/models/lasso_selection.dart';
 import 'package:skynote/models/line_eraser.dart';
 import 'package:skynote/models/line_fragment.dart';
 import 'package:skynote/models/point.dart';
@@ -31,7 +32,8 @@ class LineForm extends PaintElement {
       double width,
       double height,
       bool disableGestureDetection,
-      VoidCallback refreshFromElement) {
+      VoidCallback refreshFromElement,
+      ValueChanged<String> onDeleteImage) {
     //TODO Check if line is in bounds
     return CustomPaint(
       painter: LineFormPainter(this, offset, width, height),
@@ -102,6 +104,62 @@ class LineForm extends PaintElement {
     } else {
       return false;
     }
+  }
+
+  @override
+  bool checkLassoSelection(LassoSelection lassoSelection) {
+    if (lassoSelection.checkCollision(a) && lassoSelection.checkCollision(b)) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  @override
+  double getBottomY() {
+    if (a.y > b.y) {
+      return a.y;
+    } else {
+      return b.y;
+    }
+  }
+
+  @override
+  double getLeftX() {
+    if (a.x < b.x) {
+      return a.x;
+    } else {
+      return b.x;
+    }
+  }
+
+  @override
+  double getRightX() {
+    if (a.x > b.x) {
+      return a.x;
+    } else {
+      return b.x;
+    }
+  }
+
+  @override
+  double getTopY() {
+    if (a.y < b.y) {
+      return a.y;
+    } else {
+      return b.y;
+    }
+  }
+
+  @override
+  void moveByOffset(Offset offset) {
+    a.x += offset.dx;
+    a.y += offset.dy;
+
+    b.x += offset.dx;
+    b.y += offset.dy;
+
+    // TODO: implement moveByOffset
   }
 }
 
