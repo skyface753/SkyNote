@@ -47,7 +47,7 @@ class TextElement extends PaintElement {
                 context: context,
                 builder: (BuildContext context) {
                   return AlertDialog(
-                    title: Text('Edit text'),
+                    title: const Text('Edit text'),
                     content: TextField(
                       autofocus: true,
                       controller: TextEditingController(text: text),
@@ -64,7 +64,7 @@ class TextElement extends PaintElement {
                     ),
                     actions: <Widget>[
                       ElevatedButton(
-                        child: Text('Ok'),
+                        child: const Text('Ok'),
                         onPressed: () {
                           refreshFromElement();
                           Navigator.of(context).pop();
@@ -96,6 +96,7 @@ class TextElement extends PaintElement {
     return false;
   }
 
+  @override
   Map<String, dynamic> toJson() {
     return {
       'type': PaintElementTypes.textElement.index,
@@ -137,7 +138,6 @@ class TextElement extends PaintElement {
   void moveByOffset(Offset offset) {
     pos.x += offset.dx;
     pos.y += offset.dy;
-    // TODO: implement moveByOffset
   }
 
   @override

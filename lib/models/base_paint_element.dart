@@ -1,12 +1,8 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:skynote/models/lasso_selection.dart';
 import 'package:skynote/models/line.dart';
 import 'package:skynote/models/line_eraser.dart';
 import 'package:skynote/models/line_form.dart';
-import 'package:skynote/models/line_fragment.dart';
-// import 'package:skynote/models/line_old.dart';
 import 'package:skynote/models/paint_image.dart';
 import 'package:skynote/models/point.dart';
 import 'package:skynote/models/text.dart';

@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
 
@@ -8,8 +7,7 @@ import 'package:skynote/appwrite.dart';
 import 'package:skynote/models/base_paint_element.dart';
 import 'package:skynote/models/lasso_selection.dart';
 import 'package:skynote/models/line_eraser.dart';
-import 'dart:ui' as ui
-    show Image, Paint, Canvas, Offset, Codec, instantiateImageCodec;
+import 'dart:ui' as ui show Paint;
 
 import 'package:skynote/models/point.dart';
 import 'package:skynote/models/types.dart';
@@ -53,10 +51,10 @@ class PaintImage extends PaintElement {
         return Positioned(
           left: offset.dx + a.x,
           top: offset.dy + a.y,
-          child: Container(
+          child: SizedBox(
             width: width / scale,
             height: height / scale,
-            child: Center(
+            child: const Center(
               child: CircularProgressIndicator(),
             ),
           ),
@@ -65,7 +63,7 @@ class PaintImage extends PaintElement {
         return Positioned(
           left: offset.dx + a.x,
           top: offset.dy + a.y,
-          child: Container(
+          child: SizedBox(
             width: width / scale,
             height: height / scale,
             child: Center(
@@ -94,9 +92,9 @@ class PaintImage extends PaintElement {
                           position: RelativeRect.fromLTRB(
                               a.x, a.y, screenWidth - a.x, screenHeight - a.y),
                           items: [
-                            PopupMenuItem(
+                            const PopupMenuItem(
                               value: 'delete',
-                              child: Text('Delete'),
+                              child: const Text('Delete'),
                             ),
                           ]).then((value) {
                         if (value == 'delete') {
@@ -193,10 +191,10 @@ class PaintImage extends PaintElement {
         return Positioned(
           left: offset.dx + a.x,
           top: offset.dy + a.y,
-          child: Container(
+          child: SizedBox(
             width: width.toDouble() * scale,
             height: height.toDouble() * scale,
-            child: Center(
+            child: const Center(
               child: CircularProgressIndicator(),
             ),
           ),
@@ -298,8 +296,6 @@ class PaintImage extends PaintElement {
   bool intersectAsSegments(LineEraser lineEraser) {
     //Dont delete Image
     return false;
-    // TODO: implement intersectAsSegments
-    throw UnimplementedError();
   }
 
   @override
@@ -326,14 +322,22 @@ class PaintImage extends PaintElement {
 
   @override
   bool checkLassoSelection(LassoSelection lassoSelection) {
+    vm.Vector2 a2 = vm.Vector2(a.x + (width / scale), a.y);
+    vm.Vector2 b = vm.Vector2(a.x, a.y + (height / scale));
+    vm.Vector2 b2 = vm.Vector2(a.x + (width / scale), a.y + (height / scale));
+
+    if (lassoSelection.checkCollision(a) &&
+        lassoSelection.checkCollision(a2) &&
+        lassoSelection.checkCollision(b) &&
+        lassoSelection.checkCollision(b2)) {
+      return true;
+    }
     return false;
-    // TODO: implement checkLassoSelection
-    throw UnimplementedError();
   }
 
   @override
   double getBottomY() {
-    return a.y + height;
+    return a.y + height / scale;
   }
 
   @override
@@ -343,7 +347,7 @@ class PaintImage extends PaintElement {
 
   @override
   double getRightX() {
-    return a.x + width;
+    return a.x + width / scale;
   }
 
   @override

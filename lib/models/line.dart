@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:skynote/models/base_paint_element.dart';
 import 'package:skynote/models/lasso_selection.dart';
@@ -12,15 +10,14 @@ class Line extends PaintElement {
   Line(Paint paint) : super(paint);
   bool isLineRendered = false;
 
-  @override
   void drawCurrent(Canvas canvas, Offset offset, double width, double height) {
     Path path = Path();
-    Path? _currentPath;
+    Path? currentPath;
     isLineRendered = false;
     for (LineFragment fragment in fragments) {
-      _currentPath = fragment.getPath(offset, width, height);
-      if (_currentPath != null) {
-        path.addPath(_currentPath, Offset.zero);
+      currentPath = fragment.getPath(offset, width, height);
+      if (currentPath != null) {
+        path.addPath(currentPath, Offset.zero);
         isLineRendered = true;
       }
     }
@@ -54,8 +51,6 @@ class Line extends PaintElement {
     return CustomPaint(
       painter: LinePainter(path, paint),
     );
-
-    // TODO: implement build
   }
 
   @override
@@ -179,13 +174,12 @@ class Line extends PaintElement {
     for (LineFragment fragment in fragments) {
       fragment.moveByOffset(offset);
     }
-    // TODO: implement moveByOffset
   }
 }
 
 class LinePainter extends CustomPainter {
   Path path;
-  Paint _paint;
+  final Paint _paint;
   LinePainter(this.path, this._paint);
   @override
   void paint(Canvas canvas, Size size) {

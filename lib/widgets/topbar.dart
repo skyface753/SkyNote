@@ -1,11 +1,7 @@
 // TOPBAR in Main
 
-import 'dart:io';
 import 'package:appwrite/appwrite.dart';
 import 'package:flash/flash.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:appwrite/appwrite.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 // import 'package:flutter/widgets.dart';
 // import 'package:flutter/material.dart';
@@ -13,8 +9,6 @@ import 'package:skynote/appwrite.dart';
 import 'package:skynote/main.dart';
 import 'package:skynote/models/base_paint_element.dart';
 import 'package:skynote/models/note_book.dart';
-import 'package:skynote/models/paint_image.dart';
-import 'package:skynote/models/text.dart';
 import 'package:pasteboard/pasteboard.dart';
 
 String _formsToString(Forms form) {
@@ -75,6 +69,7 @@ class TopBar extends StatelessWidget {
     this.canvasState,
     this.currScale,
     this.selectedPaintColor, {
+    Key? key,
     required this.onChangPaintColor,
     required this.onChangeStrokeWidth,
     required this.onChangeForm,
@@ -89,7 +84,7 @@ class TopBar extends StatelessWidget {
     required this.onGoToHome,
     required this.onCreateTextElement,
     required this.onImagePaste,
-  });
+  }) : super(key: key);
 
   Storage appwriteStorage = AppWriteCustom().getAppwriteStorage();
   TextEditingController newTextFieldController = TextEditingController();
@@ -155,13 +150,13 @@ class TopBar extends StatelessWidget {
                         },
                       ),
                       actions: <Widget>[
-                        FlatButton(
+                        ElevatedButton(
                           child: const Text('CANCEL'),
                           onPressed: () {
                             Navigator.of(context).pop();
                           },
                         ),
-                        FlatButton(
+                        ElevatedButton(
                           child: const Text('OK'),
                           onPressed: () {
                             onCreateTextElement(newTextFieldController.text);
@@ -251,7 +246,7 @@ class TopBar extends StatelessWidget {
                   onChangeForm(newValue!);
                 }),
             IconButton(
-                icon: Icon(Icons.paste),
+                icon: const Icon(Icons.paste),
                 onPressed: () async {
                   // try {
                   //   final imageBytes = await Pasteboard.image;
@@ -271,7 +266,7 @@ class TopBar extends StatelessWidget {
                   try {
                     List<String> filePaths = await Pasteboard.files();
                     print("Files");
-                    if (filePaths != null && filePaths.isNotEmpty) {
+                    if (filePaths.isNotEmpty) {
                       print("files: ${filePaths.length}");
                       bool gotAnImage = false;
                       for (String filePath in filePaths) {
@@ -310,7 +305,6 @@ class TopBar extends StatelessWidget {
                 onChangeLassoMode();
               },
             ),
-            //TODO
             IconButton(
                 onPressed: () async {
                   onImagePicker();

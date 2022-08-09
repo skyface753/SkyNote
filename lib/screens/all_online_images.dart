@@ -7,8 +7,10 @@ import 'package:skynote/appwrite.dart';
 import 'package:skynote/main.dart';
 
 class AllOnlineImagesScreen extends StatefulWidget {
+  const AllOnlineImagesScreen({Key? key}) : super(key: key);
+
   @override
-  _AllOnlineImagesScreenState createState() => _AllOnlineImagesScreenState();
+  AllOnlineImagesScreenState createState() => AllOnlineImagesScreenState();
 }
 
 class ImageList {
@@ -19,7 +21,7 @@ class ImageList {
   ImageList(this.id, this.name, this.image);
 }
 
-class _AllOnlineImagesScreenState extends State<AllOnlineImagesScreen> {
+class AllOnlineImagesScreenState extends State<AllOnlineImagesScreen> {
   Storage appwriteStorage = AppWriteCustom().getAppwriteStorage();
 
   Future<List<File>> getImages() async {
@@ -39,7 +41,7 @@ class _AllOnlineImagesScreenState extends State<AllOnlineImagesScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
         appBar: AppBar(
-          title: Text('All online images'),
+          title: const Text('All online images'),
           actions: [
             //Delete all images
             IconButton(
@@ -49,18 +51,18 @@ class _AllOnlineImagesScreenState extends State<AllOnlineImagesScreen> {
                     context: context,
                     builder: (BuildContext context) {
                       return AlertDialog(
-                        title: Text('Delete all images'),
-                        content:
-                            Text('Are you sure you want to delete all images?'),
+                        title: const Text('Delete all images'),
+                        content: const Text(
+                            'Are you sure you want to delete all images?'),
                         actions: [
-                          FlatButton(
-                            child: Text('Cancel'),
+                          ElevatedButton(
+                            child: const Text('Cancel'),
                             onPressed: () {
                               Navigator.of(context).pop();
                             },
                           ),
-                          FlatButton(
-                            child: Text('Delete'),
+                          ElevatedButton(
+                            child: const Text('Delete'),
                             onPressed: () async {
                               //Delete all images
                               List<File> files = await getImages();
@@ -76,14 +78,14 @@ class _AllOnlineImagesScreenState extends State<AllOnlineImagesScreen> {
                       );
                     });
               },
-              icon: Icon(Icons.delete),
+              icon: const Icon(Icons.delete),
             ),
             //Refresh button
             IconButton(
               onPressed: () {
                 setState(() {});
               },
-              icon: Icon(Icons.refresh),
+              icon: const Icon(Icons.refresh),
             ),
           ],
         ),
@@ -104,27 +106,27 @@ class _AllOnlineImagesScreenState extends State<AllOnlineImagesScreen> {
                             subtitle: Text(snapshot.data![index].$id),
                             leading: snapshotImage.hasData
                                 ? Image.memory(snapshotImage.data!)
-                                : CircularProgressIndicator(),
+                                : const CircularProgressIndicator(),
                             trailing: IconButton(
-                              icon: Icon(Icons.delete),
+                              icon: const Icon(Icons.delete),
                               onPressed: () async {
                                 //Confirm delete
                                 showDialog(
                                     context: context,
                                     builder: (context) {
                                       return AlertDialog(
-                                        title: Text('Delete image'),
-                                        content: Text(
+                                        title: const Text('Delete image'),
+                                        content: const Text(
                                             'Are you sure you want to delete this image?'),
                                         actions: [
-                                          FlatButton(
-                                            child: Text('Cancel'),
+                                          ElevatedButton(
+                                            child: const Text('Cancel'),
                                             onPressed: () {
                                               Navigator.of(context).pop();
                                             },
                                           ),
-                                          FlatButton(
-                                            child: Text('Delete'),
+                                          ElevatedButton(
+                                            child: const Text('Delete'),
                                             onPressed: () async {
                                               await appwriteStorage.deleteFile(
                                                   bucketId: imageStorageID,
@@ -145,7 +147,7 @@ class _AllOnlineImagesScreenState extends State<AllOnlineImagesScreen> {
                 },
               );
             } else {
-              return Center(
+              return const Center(
                 child: CircularProgressIndicator(),
               );
             }

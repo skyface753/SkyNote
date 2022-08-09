@@ -1,10 +1,7 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:skynote/models/base_paint_element.dart';
 import 'package:skynote/models/lasso_selection.dart';
 import 'package:skynote/models/line_eraser.dart';
-import 'package:skynote/models/line_fragment.dart';
 import 'package:skynote/models/point.dart';
 import 'package:skynote/models/types.dart';
 import 'package:vector_math/vector_math_64.dart' as vm;
@@ -158,8 +155,6 @@ class LineForm extends PaintElement {
 
     b.x += offset.dx;
     b.y += offset.dy;
-
-    // TODO: implement moveByOffset
   }
 }
 
@@ -177,7 +172,7 @@ class LineFormPainter extends CustomPainter {
   LineFormPainter(this.lineForm, this.offset, this.width, this.height);
   @override
   void paint(Canvas canvas, Size size) {
-    //TODO Check if line is in bounds
+    //TODO Check if line is in bounds (called in build)
     canvas.drawLine(
         Offset(lineForm.a.x + offset.dx, lineForm.a.y + offset.dy),
         Offset(lineForm.b.x + offset.dx, lineForm.b.y + offset.dy),

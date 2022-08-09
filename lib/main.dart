@@ -5,6 +5,7 @@ import 'dart:math';
 import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flash/flash.dart';
+import 'package:flutter/foundation.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 
 import 'package:crypto/crypto.dart';
@@ -55,8 +56,8 @@ class MyApp extends StatelessWidget {
           visualDensity: VisualDensity.adaptivePlatformDensity,
         ),
         routes: {
-          '/': (context) => NotebookSelectionScreen(),
-          '/login': (context) => LoginScreen(),
+          '/': (context) => const NotebookSelectionScreen(),
+          '/login': (context) => const LoginScreen(),
           '/online/images': (context) => AllOnlineImagesScreen()
           // '/notebook': (context) => InfiniteCanvasPage(),
         },
@@ -116,15 +117,12 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
 
   // late LineFragment _lineEraser;
   LineEraser? _lineEraser;
-  Map<int, PointerMap> _pointerMap = {};
+  final Map<int, PointerMap> _pointerMap = {};
 
   LassoSelection? _lassoSelection;
   List<PaintElement>? _selectedElements;
 
   late String oldNotebookName;
-
-  //TODO TEST
-  // TextElement testTextElement = TextElement("Hello World", Offset(10, 10), _currentPaint);
 
   //Forms
   LineForm? _lineForm;
@@ -134,7 +132,7 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
   Storage appwriteStorage = AppWriteCustom().getAppwriteStorage();
 
   List<Pencil> pencils = Pencil.getDefaultPencils();
-  Paint _currentPaint = Pencil.empty().getPaint();
+  final Paint _currentPaint = Pencil.empty().getPaint();
 
   late StreamSubscription _intentDataStreamSubscription;
 
@@ -253,7 +251,11 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
         offset = _noteBook.sections[_noteBook.selectedSectionIndex!]
                 .notes[_noteBook.selectedNoteIndex!].lastPos ??
             Offset.zero;
-      } catch (e) {}
+      } catch (e) {
+        if (kDebugMode) {
+          print(e);
+        }
+      }
     }
 
     loading = false;
@@ -876,7 +878,6 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                                           //     paint);
                                         } else if (canvasState ==
                                             CanvasState.erase) {
-                                          //TODO Performance
                                           _lineEraser = LineEraser(
                                             vm.Vector2(
                                                 event.localPosition.dx -
@@ -1180,7 +1181,7 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                                         }
                                         // setState(() {})
                                       },
-                                      //TODO Test Scrollview
+                                      //TODO Test Scrollview (Or show scrollbar)
                                       child: SizedBox.expand(
                                           child: Stack(
                                         fit: StackFit.expand,
@@ -1197,24 +1198,8 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                                               ),
                                               // painter: BackgroundPainter(offset),
                                               willChange: true,
-                                              // child: CustomPaint(
-                                              // painter: BackgroundPainter(
-                                              //     offset, _noteBook.defaultBackground),
-                                              // willChange: false,
-                                              // ),
                                             ),
                                           ),
-                                          //TODO
-                                          // testTextElement.getWidget(
-                                          //     context,
-                                          //     offset,
-                                          //     canvasState != CanvasState.pan
-                                          //         ? true
-                                          //         : false, () {
-                                          //   setState(() {
-                                          //     // _paintElements!.add(testTextElement);
-                                          //   });
-                                          // })
                                         ],
                                       )),
                                     ),
@@ -1233,8 +1218,7 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                                       setState(() {
                                         _paintElements!.removeWhere((element) =>
                                             element is PaintImage &&
-                                            (element as PaintImage)
-                                                    .appwriteFileId ==
+                                            (element).appwriteFileId ==
                                                 appwriteFileID);
                                         saveToAppwrite();
                                       });
@@ -1370,8 +1354,8 @@ class CanvasCustomPainter extends CustomPainter {
   Offset offset;
   // final Paint _drawingPaint;
   int paintElementsCount = 0;
-  LineForm? _lineForm;
-  LassoSelection? _lassoSelection;
+  final LineForm? _lineForm;
+  final LassoSelection? _lassoSelection;
 
   CanvasCustomPainter(
     this._currentDrawingLine,
@@ -1479,7 +1463,7 @@ class CanvasCustomPainter extends CustomPainter {
 // }
 
 class GoogleHttpClient extends IOClient {
-  Map<String, String> _headers;
+  final Map<String, String> _headers;
 
   GoogleHttpClient(this._headers) : super();
 
@@ -1492,18 +1476,18 @@ class GoogleHttpClient extends IOClient {
       super.head(url, headers: headers!..addAll(_headers));
 }
 
-class GoogleAuthClient extends http.BaseClient {
-  final Map<String, String> _headers;
-  final _client = new http.Client();
+// class GoogleAuthClient extends http.BaseClient {
+//   final Map<String, String> _headers;
+//   final _client = new http.Client();
 
-  GoogleAuthClient(this._headers);
+//   GoogleAuthClient(this._headers);
 
-  @override
-  Future<http.StreamedResponse> send(http.BaseRequest request) {
-    request.headers.addAll(_headers);
-    return _client.send(request);
-  }
-}
+//   @override
+//   Future<http.StreamedResponse> send(http.BaseRequest request) {
+//     request.headers.addAll(_headers);
+//     return _client.send(request);
+//   }
+// }
 
 Future<String> get _localPath async {
   final directory = await getApplicationDocumentsDirectory();

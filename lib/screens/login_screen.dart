@@ -66,11 +66,12 @@ class LoginScreenState extends State<LoginScreen> {
               onSubmitted: (value) => login(),
             ),
             RoundedLoadingButton(
-                child: Text('Login', style: TextStyle(color: Colors.white)),
-                controller: _btnController,
-                onPressed: () {
-                  login();
-                }),
+              controller: _btnController,
+              onPressed: () {
+                login();
+              },
+              child: const Text('Login', style: TextStyle(color: Colors.white)),
+            )
             // MaterialButton(
             //   onPressed: () async {
             //     Future result = appwriteAccount.createOAuth2Session(

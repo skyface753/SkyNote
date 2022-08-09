@@ -48,6 +48,8 @@ dependencies:
   lit_relative_date_time: ^1.2.0
   receive_sharing_intent: ^1.4.5
   pasteboard: ^0.2.0
+  crypto: ^3.0.2
+  vector_math: ^2.1.2
 
 dev_dependencies:
   flutter_test:

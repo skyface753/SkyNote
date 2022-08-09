@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:skynote/models/base_paint_element.dart';
 import 'package:vector_math/vector_math_64.dart' as vm;
@@ -14,7 +12,7 @@ class LassoSelection {
     lassoPoints.add(point);
   }
 
-  bool trianglePointCollsion(
+  bool _trianglePointCollsion(
       vm.Vector2 a, vm.Vector2 b, vm.Vector2 c, vm.Vector2 p) {
     double areaOrig =
         ((b.x - a.x) * (c.y - a.y) - (c.x - a.x) * (b.y - a.y)).abs();
@@ -35,7 +33,7 @@ class LassoSelection {
     for (int i = 1; i < lassoPoints.length; i++) {
       var currentPoint = lassoPoints[i];
       var lastPoint = lassoPoints[i - 1];
-      if (trianglePointCollsion(
+      if (_trianglePointCollsion(
           startPoint, lastPoint, currentPoint, otherPoint)) {
         return true;
       }
@@ -44,7 +42,7 @@ class LassoSelection {
   }
 
   void drawCurrent(Canvas canvas, Offset offset, double width, double height) {
-    if (lassoPoints.length < 1) {
+    if (lassoPoints.isEmpty) {
       return;
     }
     // var path = Path();
@@ -100,8 +98,6 @@ class LassoSelection {
         rightest = element.getRightX();
       }
     }
-    print(
-        "leftest: $leftest, rightest: $rightest, topest: $topest, bottomest: $bottomest");
 
     return StatefulBuilder(builder: ((context, setState) {
       return Positioned(

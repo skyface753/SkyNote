@@ -1,7 +1,6 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/src/widgets/framework.dart';
 import 'package:skynote/helpers/paint_convert.dart';
 import 'package:skynote/models/base_paint_element.dart';
 import 'package:skynote/models/lasso_selection.dart';
@@ -17,9 +16,7 @@ class Point extends PaintElement {
   bool isRenderd = false;
   Point(this.x, this.y, Paint paint) : super(paint);
 
-  @override
   void draw(Canvas canvas, Offset offset, double width, double height) {
-    //TODO Bugfix (point is sometimes drawn multiple times with wrong position)
     if (-offset.dx <= x &&
         x <= -offset.dx + width &&
         -offset.dy <= y &&
@@ -110,8 +107,6 @@ class Point extends PaintElement {
       return true;
     }
     return false;
-    // TODO: implement checkLassoSelection
-    throw UnimplementedError();
   }
 
   @override
@@ -138,7 +133,6 @@ class Point extends PaintElement {
   void moveByOffset(Offset offset) {
     x += offset.dx;
     y += offset.dy;
-    // TODO: implement moveByOffset
   }
 }
 

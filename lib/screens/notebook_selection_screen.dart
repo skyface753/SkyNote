@@ -55,7 +55,7 @@ class NotebookSelectionScreenState extends State<NotebookSelectionScreen> {
               onPressed: () {
                 Navigator.pushNamed(context, '/online/images');
               },
-              icon: Icon(Icons.image),
+              icon: const Icon(Icons.image),
             ),
             IconButton(
               icon: const Icon(Icons.refresh),
@@ -96,15 +96,13 @@ class NotebookSelectionScreenState extends State<NotebookSelectionScreen> {
                       snapshot.data!.elementAt(index).$updatedAt * 1000);
                   var readableDate =
                       RelativeDateTime(dateTime: DateTime.now(), other: date);
-                  RelativeDateFormat _relativeDateFormatter =
-                      RelativeDateFormat(
+                  RelativeDateFormat relativeDateFormatter = RelativeDateFormat(
                     Localizations.localeOf(context),
                   );
 
                   return ListTile(
-                    title: Text(snapshot.data!.elementAt(index).name +
-                        " / " +
-                        _relativeDateFormatter.format(readableDate)),
+                    title: Text(
+                        "${snapshot.data!.elementAt(index).name} / ${relativeDateFormatter.format(readableDate)}"),
                     onTap: () async {
                       MaterialPageRoute route = MaterialPageRoute(
                         builder: (context) => InfiniteCanvasPage(
