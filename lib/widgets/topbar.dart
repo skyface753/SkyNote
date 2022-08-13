@@ -1,5 +1,7 @@
 // TOPBAR in Main
 
+import 'dart:ui';
+
 import 'package:appwrite/appwrite.dart';
 import 'package:flash/flash.dart';
 import 'package:flutter/material.dart';
@@ -23,6 +25,8 @@ String _formsToString(Forms form) {
       return 'circle';
     case Forms.triangle:
       return 'triangle';
+    case Forms.arrow:
+      return 'arrow';
   }
 }
 
@@ -113,250 +117,292 @@ class TopBar extends StatelessWidget {
     // print(colorItems.color.runtimeType);
     return Container(
       padding: const EdgeInsets.all(8),
-      height: 70,
+      height: 100,
       width: double.infinity,
       color: Colors.grey,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: <Widget>[
-            IconButton(
-              icon: const Icon(Icons.menu),
-              onPressed: () => scaffoldKey.currentState?.openDrawer(),
-            ),
-            IconButton(
-              icon: const Icon(Icons.arrow_back),
-              color: Colors.black,
-              onPressed: () {
-                if (paintElements!.isNotEmpty) {
-                  paintElements!.removeLast();
-                }
-              },
-            ),
-            // Create a TextField
-            IconButton(
-              icon: const Icon(Icons.text_fields),
-              color: Colors.black,
-              onPressed: () {
-                showDialog(
-                  context: context,
-                  builder: (BuildContext context) {
-                    return AlertDialog(
-                      title: const Text('Enter text'),
-                      content: TextField(
-                        autofocus: true,
-                        onChanged: (String text) {
-                          newTextFieldController.text = text;
-                        },
-                      ),
-                      actions: <Widget>[
-                        ElevatedButton(
-                          child: const Text('CANCEL'),
-                          onPressed: () {
-                            Navigator.of(context).pop();
-                          },
-                        ),
-                        ElevatedButton(
-                          child: const Text('OK'),
-                          onPressed: () {
-                            onCreateTextElement(newTextFieldController.text);
-                            // paintElements!.add(
-                            //   TextElement(
-                            //     newTextFieldController.text,
-                            //     offset,
-                            //     currentPaint,
-                            //   ),
-                            // );
-                            Navigator.of(context).pop();
-                          },
-                        ),
-                      ],
-                    );
-                  },
-                );
-              },
-            ),
-            DropdownButton(
-              value: selectedPaintColor,
-              items: colorItems.map(
-                (color) {
-                  return DropdownMenuItem(
-                    value: color,
-                    child: ColoredBox(
-                      color: color,
-                      child: const SizedBox(
-                        width: 20,
-                        height: 20,
-                      ),
-                    ),
-                  );
-                },
-              ).toList(),
-              onChanged: (Color? color) {
-                onChangPaintColor(color!);
-              },
-            ), // Background
-            DropdownButton(
-                items: backgroundItems.map((background) {
-                  return DropdownMenuItem(
-                      value: background,
-                      child: SizedBox(
-                        height: 30,
-                        width: 30,
-                        child:
-                            CustomPaint(painter: BackgroundPreview(background)),
-                      ));
-                }).toList(),
-                value: noteBook.defaultBackground,
-                onChanged: (Background? newValue) {
-                  onChangeBackground(newValue!);
-                }), // Background
-
-            DropdownButton(
-              value: currentPaint.strokeWidth,
-              items: strokeWidthItems
-                  .map(
-                    (strokeWidth) => DropdownMenuItem(
-                      value: strokeWidth,
-                      child: Text(
-                        '$strokeWidth',
-                        style:
-                            const TextStyle(fontSize: 20, color: Colors.black),
-                      ),
-                    ),
-                  )
-                  .toList(),
-              onChanged: (double? newValue) {
-                onChangeStrokeWidth(newValue!);
-              },
-              dropdownColor: Colors.white,
-            ),
-            DropdownButton(
-                items: formItems.map((form) {
-                  return DropdownMenuItem(
-                      value: form,
-                      child: Text(
-                        _formsToString(form),
-                        style:
-                            const TextStyle(fontSize: 20, color: Colors.black),
-                      ));
-                }).toList(),
-                value: selectedForm,
-                onChanged: (Forms? newValue) {
-                  onChangeForm(newValue!);
-                }),
-            IconButton(
-                icon: const Icon(Icons.paste),
-                onPressed: () async {
-                  // try {
-                  //   final imageBytes = await Pasteboard.image;
-                  //   print("Image");
-                  //   print("imageBytes: ${imageBytes!.length}");
-
-                  //   final tempDir = await getTemporaryDirectory();
-                  //   File file =
-                  //       await File('${tempDir.path}/image.png').create();
-                  //   file.writeAsBytesSync(imageBytes);
-                  //   onImagePaste(file.path);
-                  // } catch (e) {
-                  //   print(e);
-                  // } catch (e) {
-                  //   print(e);
-                  // }
-                  try {
-                    List<String> filePaths = await Pasteboard.files();
-                    print("Files");
-                    if (filePaths.isNotEmpty) {
-                      print("files: ${filePaths.length}");
-                      bool gotAnImage = false;
-                      for (String filePath in filePaths) {
-                        print(filePath);
-                        if (filePath.endsWith(".png") ||
-                            filePath.endsWith(".jpg")) {
-                          gotAnImage = true;
-                          onImagePaste(filePath);
-                        }
-                      }
-                      if (!gotAnImage) {
-                        showFlashTopBar(context, "No image found", false);
-                      }
-                    } else {
-                      showFlashTopBar(context, "No files found", false);
-                    }
-                  } catch (e) {
-                    print(e);
-                  }
-                }),
-            // Eraser Button
-            IconButton(
-              icon: const Icon(Icons.delete),
-              color:
-                  CanvasState.erase == canvasState ? Colors.red : Colors.black,
-              onPressed: () {
-                onChangeEraseMode();
-              },
-            ),
-            // Lasso Mode
-            IconButton(
-              icon: const Icon(Icons.line_axis),
-              color:
-                  CanvasState.lasso == canvasState ? Colors.red : Colors.black,
-              onPressed: () {
-                onChangeLassoMode();
-              },
-            ),
-            IconButton(
-                onPressed: () async {
-                  onImagePicker();
-                },
-                icon: const Icon(Icons.add_photo_alternate)),
-            //Save Button
-            IconButton(
-              icon: const Icon(Icons.save),
-              color: Colors.black,
-              onPressed: () {
-                onSave();
-                // saveToAppwrite;
-              },
-            ),
-            //Verify Button
-            IconButton(
-              icon: const Icon(Icons.verified_user),
-              color: Colors.black,
-              onPressed: () {
-                onVerify();
-                // verifyNotebook;
-              },
-            ),
-            // Zoom Button
-            IconButton(
-              icon: const Icon(Icons.zoom_in),
-              color: Colors.black,
-              onPressed: () {
-                onZoomIn();
-              },
-            ),
-            IconButton(
-              icon: const Icon(Icons.zoom_out),
-              color: Colors.black,
-              onPressed: () {
-                onZoomOut();
-              },
-            ),
-            // Back to Notebook List Screen
-
-            IconButton(
-              icon: const Icon(
-                  Icons.logout), // Not sure if this is the right icon
-              color: Colors.black,
-              onPressed: () async {
-                //TODO Show loading dialog while saving
-                onGoToHome();
-              },
-            ),
-          ],
+      child: Column(mainAxisAlignment: MainAxisAlignment.start, children: [
+        Row(
+          children: [Text("start")],
         ),
-      ),
+        SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: ConstrainedBox(
+              constraints:
+                  BoxConstraints(maxWidth: MediaQuery.of(context).size.width),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: <Widget>[
+                  IconButton(
+                    icon: const Icon(Icons.menu),
+                    onPressed: () => scaffoldKey.currentState?.openDrawer(),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back),
+                    color: Colors.black,
+                    onPressed: () {
+                      if (paintElements!.isNotEmpty) {
+                        paintElements!.removeLast();
+                      }
+                    },
+                  ),
+                  // Create a TextField
+                  IconButton(
+                    icon: const Icon(Icons.text_fields),
+                    color: Colors.black,
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (BuildContext context) {
+                          return AlertDialog(
+                            title: const Text('Enter text'),
+                            content: TextField(
+                              autofocus: true,
+                              onChanged: (String text) {
+                                newTextFieldController.text = text;
+                              },
+                            ),
+                            actions: <Widget>[
+                              ElevatedButton(
+                                child: const Text('CANCEL'),
+                                onPressed: () {
+                                  Navigator.of(context).pop();
+                                },
+                              ),
+                              ElevatedButton(
+                                child: const Text('OK'),
+                                onPressed: () {
+                                  onCreateTextElement(
+                                      newTextFieldController.text);
+                                  // paintElements!.add(
+                                  //   TextElement(
+                                  //     newTextFieldController.text,
+                                  //     offset,
+                                  //     currentPaint,
+                                  //   ),
+                                  // );
+                                  Navigator.of(context).pop();
+                                },
+                              ),
+                            ],
+                          );
+                        },
+                      );
+                    },
+                  ),
+                  DropdownButton(
+                    value: selectedPaintColor,
+                    items: colorItems.map(
+                      (color) {
+                        return DropdownMenuItem(
+                          value: color,
+                          child: ColoredBox(
+                            color: color,
+                            child: const SizedBox(
+                              width: 20,
+                              height: 20,
+                            ),
+                          ),
+                        );
+                      },
+                    ).toList(),
+                    onChanged: (Color? color) {
+                      onChangPaintColor(color!);
+                    },
+                  ), // Background
+                  DropdownButton(
+                      items: backgroundItems.map((background) {
+                        return DropdownMenuItem(
+                            value: background,
+                            child: SizedBox(
+                              height: 30,
+                              width: 30,
+                              child: CustomPaint(
+                                  painter: BackgroundPreview(background)),
+                            ));
+                      }).toList(),
+                      value: noteBook.selectedSectionIndex != null &&
+                              noteBook.selectedNoteIndex != null
+                          ? noteBook.sections[noteBook.selectedSectionIndex!]
+                              .notes[noteBook.selectedNoteIndex!].background
+                          : Background.white,
+                      onChanged: (Background? newValue) {
+                        onChangeBackground(newValue!);
+                      }), // Background
+
+                  DropdownButton(
+                    value: currentPaint.strokeWidth,
+                    items: strokeWidthItems
+                        .map(
+                          (strokeWidth) => DropdownMenuItem(
+                              value: strokeWidth,
+                              child: SizedBox(
+                                  height: 30,
+                                  width: 30,
+                                  child: Center(
+                                      child: CustomPaint(
+                                          painter:
+                                              StrokeWidthPreview(strokeWidth))))
+                              // Text(
+                              //   '$strokeWidth',
+                              //   style:
+                              //       const TextStyle(fontSize: 20, color: Colors.black),
+                              // ),
+                              ),
+                        )
+                        .toList(),
+                    onChanged: (double? newValue) {
+                      onChangeStrokeWidth(newValue!);
+                    },
+                    dropdownColor: Colors.white,
+                  ),
+                  DropdownButton(
+                      items: formItems.map((form) {
+                        return DropdownMenuItem(
+                            value: form,
+                            child: Text(
+                              _formsToString(form),
+                              style: const TextStyle(
+                                  fontSize: 20, color: Colors.black),
+                            ));
+                      }).toList(),
+                      value: selectedForm,
+                      onChanged: (Forms? newValue) {
+                        onChangeForm(newValue!);
+                      }),
+                  IconButton(
+                      icon: const Icon(Icons.paste),
+                      onPressed: () async {
+                        // try {
+                        //   final imageBytes = await Pasteboard.image;
+                        //   print("Image");
+                        //   print("imageBytes: ${imageBytes!.length}");
+
+                        //   final tempDir = await getTemporaryDirectory();
+                        //   File file =
+                        //       await File('${tempDir.path}/image.png').create();
+                        //   file.writeAsBytesSync(imageBytes);
+                        //   onImagePaste(file.path);
+                        // } catch (e) {
+                        //   print(e);
+                        // } catch (e) {
+                        //   print(e);
+                        // }
+                        try {
+                          List<String> filePaths = await Pasteboard.files();
+                          print("Files");
+                          if (filePaths.isNotEmpty) {
+                            print("files: ${filePaths.length}");
+                            bool gotAnImage = false;
+                            for (String filePath in filePaths) {
+                              print(filePath);
+                              if (filePath.endsWith(".png") ||
+                                  filePath.endsWith(".jpg")) {
+                                gotAnImage = true;
+                                onImagePaste(filePath);
+                              }
+                            }
+                            if (!gotAnImage) {
+                              showFlashTopBar(context, "No image found", false);
+                            }
+                          } else {
+                            showFlashTopBar(context, "No files found", false);
+                          }
+                        } catch (e) {
+                          print(e);
+                        }
+                      }),
+                  // Eraser Button
+                  IconButton(
+                    icon: const Icon(Icons.delete),
+                    color: CanvasState.erase == canvasState
+                        ? Colors.red
+                        : Colors.black,
+                    onPressed: () {
+                      onChangeEraseMode();
+                    },
+                  ),
+                  // Lasso Mode
+                  IconButton(
+                    icon: const Icon(Icons.line_axis),
+                    color: CanvasState.select == canvasState
+                        ? Colors.red
+                        : Colors.black,
+                    onPressed: () {
+                      onChangeLassoMode();
+                    },
+                  ),
+                  IconButton(
+                      onPressed: () async {
+                        onImagePicker();
+                      },
+                      icon: const Icon(Icons.add_photo_alternate)),
+                  //Save Button
+                  IconButton(
+                    icon: const Icon(Icons.save),
+                    color: Colors.black,
+                    onPressed: () {
+                      onSave();
+                      // saveToAppwrite;
+                    },
+                  ),
+                  //Verify Button
+                  IconButton(
+                    icon: const Icon(Icons.verified_user),
+                    color: Colors.black,
+                    onPressed: () {
+                      onVerify();
+                      // verifyNotebook;
+                    },
+                  ),
+                  // Zoom Button
+                  IconButton(
+                    icon: const Icon(Icons.zoom_in),
+                    color: Colors.black,
+                    onPressed: () {
+                      onZoomIn();
+                    },
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.zoom_out),
+                    color: Colors.black,
+                    onPressed: () {
+                      onZoomOut();
+                    },
+                  ),
+                  // Back to Notebook List Screen
+
+                  IconButton(
+                    icon: const Icon(
+                        Icons.logout), // Not sure if this is the right icon
+                    color: Colors.black,
+                    onPressed: () async {
+                      //TODO Show loading dialog while saving
+                      onGoToHome();
+                    },
+                  ),
+                ],
+              ),
+            )),
+      ]),
     );
+  }
+}
+
+class StrokeWidthPreview extends CustomPainter {
+  final double strokeWidth;
+  StrokeWidthPreview(this.strokeWidth);
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.black
+      ..strokeWidth = strokeWidth
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+    canvas.drawPoints(PointMode.points, [const Offset(0, 0)], paint);
+  }
+
+  @override
+  bool shouldRepaint(StrokeWidthPreview oldDelegate) {
+    return oldDelegate.strokeWidth != strokeWidth;
   }
 }

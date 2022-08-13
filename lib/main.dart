@@ -15,10 +15,15 @@ import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:skynote/appwrite.dart';
 import 'package:skynote/models/base_paint_element.dart';
-import 'package:skynote/models/lasso_selection.dart';
+import 'package:skynote/models/forms/arrow.dart';
+import 'package:skynote/models/forms/circle.dart';
+import 'package:skynote/models/forms/form_base.dart';
+import 'package:skynote/models/forms/rect.dart';
+import 'package:skynote/models/forms/triangle.dart';
+import 'package:skynote/models/selections/lasso_selection.dart';
 import 'package:skynote/models/line.dart';
 import 'package:skynote/models/line_eraser.dart';
-import 'package:skynote/models/line_form.dart';
+import 'package:skynote/models/forms/line.dart';
 import 'package:skynote/models/line_fragment.dart';
 // import 'package:skynote/models/line.dart';
 // import 'package:skynote/models/line_fragment.dart';
@@ -26,6 +31,8 @@ import 'package:skynote/models/note_book.dart';
 import 'package:skynote/models/paint_image.dart';
 import 'package:skynote/models/pencils.dart';
 import 'package:skynote/models/point.dart';
+import 'package:skynote/models/selections/rect_selection.dart';
+import 'package:skynote/models/selections/selection_base.dart';
 import 'package:skynote/models/text.dart';
 import 'package:skynote/screens/all_online_images.dart';
 import 'package:skynote/screens/login_screen.dart';
@@ -66,9 +73,11 @@ class MyApp extends StatelessWidget {
   }
 }
 
-enum CanvasState { pan, draw, erase, zoom, form, lasso }
+enum CanvasState { pan, draw, erase, zoom, form, select }
 
-enum Forms { none, line, rectangle, circle, triangle }
+enum Forms { none, line, rectangle, circle, triangle, arrow }
+
+enum SelectionModes { rect, lasso }
 
 // enum Background { white, lines, checkered, black }
 
@@ -77,7 +86,16 @@ class PointerMap {
   PointerMap(this.lastPosition);
 }
 
-String _canvasStateToString(CanvasState state) {
+String _selectionModeToString(SelectionModes mode) {
+  switch (mode) {
+    case SelectionModes.rect:
+      return 'rect';
+    case SelectionModes.lasso:
+      return 'lasso';
+  }
+}
+
+String _canvasStateToString(CanvasState state, SelectionModes mode) {
   switch (state) {
     case CanvasState.pan:
       return 'pan';
@@ -89,8 +107,10 @@ String _canvasStateToString(CanvasState state) {
       return 'zoom';
     case CanvasState.form:
       return 'form';
-    case CanvasState.lasso:
-      return 'lasso';
+    case CanvasState.select:
+      {
+        return _selectionModeToString(mode);
+      }
   }
 }
 
@@ -119,13 +139,15 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
   LineEraser? _lineEraser;
   final Map<int, PointerMap> _pointerMap = {};
 
-  LassoSelection? _lassoSelection;
+  SelectionBase? _currentSelection;
+  SelectionModes selectionMode =
+      SelectionModes.rect; // Default to rect selection
   List<PaintElement>? _selectedElements;
 
   late String oldNotebookName;
 
   //Forms
-  LineForm? _lineForm;
+  BaseForm? _currentForm;
 
   Offset offset = const Offset(0, 0);
 
@@ -150,8 +172,8 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
         uploadedFile.$id,
         vm.Vector2(-offset.dx, -offset.dy),
         _currentPaint,
-        decodedImage.width,
-        decodedImage.height, () {
+        decodedImage.width.toDouble(),
+        decodedImage.height.toDouble(), () {
       setState(() {});
     });
     _paintElements!.add(newPaintImage);
@@ -164,7 +186,7 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
     TextElement newTextElement =
         TextElement(text, vm.Vector2(-offset.dx, -offset.dy), _currentPaint);
     _paintElements!.add(newTextElement);
-    saveToAppwrite();
+    setState(() {});
   }
 
   @override
@@ -241,8 +263,6 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
         NoteBook.fromJson(json.decode(fileContent), (() => setState(() {})));
     _noteBook.appwriteFileId = notebookId;
     oldNotebookName = _noteBook.name;
-    //TODO Background for each page
-    // selectedBackground = _noteBook.defaultBackground;
     if (_noteBook.selectedSectionIndex != null &&
         _noteBook.selectedNoteIndex != null) {
       try {
@@ -377,6 +397,7 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
     Forms.rectangle,
     Forms.circle,
     Forms.triangle,
+    Forms.arrow
   ];
   Forms selectedForm = Forms.none;
   // FOR Stroke WIDTH PICKER
@@ -385,15 +406,10 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
   // List of items in our dropdown menu
   List<double> strokeWidthItems = [
     1.0,
-    2.0,
-    3.0,
     4.0,
-    5.0,
-    6.0,
     7.0,
-    8.0,
-    9.0,
     10.0,
+    15.0,
   ];
   double currScale = 1;
   double? lastDistance;
@@ -664,6 +680,126 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
   bool loading = true;
   bool stylusAvailable = false;
 
+  _handleFormDown(PointerEvent event) {
+    vm.Vector2 currPoint = vm.Vector2(
+        event.localPosition.dx - offset.dx, event.localPosition.dy - offset.dy);
+    switch (selectedForm) {
+      case Forms.line:
+        {
+          _currentForm = LineForm(currPoint, currPoint, _currentPaint);
+          break;
+        }
+      case Forms.rectangle:
+        {
+          _currentForm = RectForm(currPoint, currPoint, _currentPaint);
+          break;
+        }
+      case Forms.circle:
+        {
+          _currentForm = CircleForm(currPoint, 0, _currentPaint);
+          break;
+        }
+      case Forms.triangle:
+        {
+          _currentForm = TriangleForm(currPoint, currPoint, _currentPaint);
+          break;
+        }
+      case Forms.arrow:
+        {
+          _currentForm = ArrowForm(currPoint, currPoint, _currentPaint);
+          break;
+        }
+      case Forms.none:
+        {
+          _currentForm = null;
+          break;
+        }
+    }
+  }
+
+  _handleFormMove(PointerEvent event) {
+    vm.Vector2 currPoint = vm.Vector2(
+        event.localPosition.dx - offset.dx, event.localPosition.dy - offset.dy);
+    if (_currentForm == null) {
+      print("Line Form was null");
+      return;
+    }
+    _currentForm!.setEndpoint(currPoint);
+    setState(() {});
+  }
+
+  _handleFormEnd(PointerEvent event) {
+    vm.Vector2 currPoint = vm.Vector2(
+        event.localPosition.dx - offset.dx, event.localPosition.dy - offset.dy);
+    if (_currentForm == null) {
+      print("Line Form was null");
+      return;
+    }
+    _currentForm!.setEndpoint(currPoint);
+    if (_currentForm!.isItAPoint()) {
+      _currentForm = null;
+      print("Line Form was just a point");
+      return;
+    }
+
+    setState(() {
+      _paintElements!.add(_currentForm! as PaintElement);
+      _currentForm = null;
+      print("Added a Form");
+    });
+  }
+
+  _handleSelectionDown(PointerEvent event) {
+    vm.Vector2 currPoint = vm.Vector2(
+        event.localPosition.dx - offset.dx, event.localPosition.dy - offset.dy);
+    switch (selectionMode) {
+      case SelectionModes.rect:
+        {
+          _currentSelection = RectSelection(currPoint);
+          break;
+        }
+      case SelectionModes.lasso:
+        {
+          _currentSelection = LassoSelection(currPoint);
+          break;
+        }
+    }
+  }
+
+  _handleSelectionMove(PointerEvent event) {
+    vm.Vector2 currPoint = vm.Vector2(
+        event.localPosition.dx - offset.dx, event.localPosition.dy - offset.dy);
+    if (_currentSelection == null) {
+      print("Selection was null");
+      return;
+    }
+    _currentSelection!.setPoint(currPoint);
+    setState(() {});
+  }
+
+  _handleSelectionUp(PointerEvent event) {
+    vm.Vector2 currPoint = vm.Vector2(
+        event.localPosition.dx - offset.dx, event.localPosition.dy - offset.dy);
+    if (_currentSelection == null) {
+      showFlashTopBar("Error in Selection", false);
+      return;
+    }
+    _currentSelection!.setPoint(currPoint);
+
+    int count = 0;
+    _selectedElements = [];
+    for (int i = 0; i < _paintElements!.length; i++) {
+      if (_paintElements![i].checkSelection(_currentSelection!)) {
+        _selectedElements!.add(_paintElements![i]);
+
+        count++;
+      }
+    }
+    print("Lasso Count: $count");
+    _currentSelection = null;
+    setState(() {});
+  }
+
   @override
   Widget build(BuildContext context) {
     var shortestSide = MediaQuery.of(context).size.shortestSide;
@@ -692,7 +828,7 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
             });
           },
           child: Text(
-            _canvasStateToString(canvasState),
+            _canvasStateToString(canvasState, selectionMode),
             style: const TextStyle(color: Colors.white),
           ),
         ),
@@ -747,7 +883,10 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                                   selectedForm = value;
                                 }),
                             onChangeBackground: (value) => setState(() {
-                                  _noteBook.defaultBackground = value;
+                                  _noteBook
+                                      .sections[_noteBook.selectedSectionIndex!]
+                                      .notes[_noteBook.selectedNoteIndex!]
+                                      .background = value;
                                 }),
                             onChangeEraseMode: () => setState(() {
                                   if (canvasState == CanvasState.erase) {
@@ -758,10 +897,10 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                                 }),
                             onChangeLassoMode: () {
                               setState(() {
-                                if (canvasState == CanvasState.lasso) {
+                                if (canvasState == CanvasState.select) {
                                   canvasState = CanvasState.draw;
                                 } else {
-                                  canvasState = CanvasState.lasso;
+                                  canvasState = CanvasState.select;
                                 }
                               });
                             },
@@ -805,13 +944,7 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                               }
                             },
                             onCreateTextElement: (String text) {
-                              TextElement newTextElement = TextElement(
-                                  text,
-                                  vm.Vector2(-offset.dx, -offset.dy),
-                                  _currentPaint);
-                              _paintElements!.add(newTextElement);
-                              setState(() {});
-                              // saveToAppwrite();
+                              addText(text);
                             },
                             onImagePaste: (path) {
                               addImage(path);
@@ -823,12 +956,44 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                                 child: SizedBox.expand(
                                     child: ClipRRect(
                                   child: Stack(children: [
-                                    CustomPaint(
-                                        size: Size.infinite,
-                                        willChange: false,
-                                        painter: BackgroundPainter(offset,
-                                            _noteBook.defaultBackground)),
-
+                                    _noteBook.selectedSectionIndex != null &&
+                                            _noteBook.selectedNoteIndex != null
+                                        ? CustomPaint(
+                                            size: Size.infinite,
+                                            willChange: false,
+                                            painter: BackgroundPainter(
+                                                offset,
+                                                _noteBook
+                                                    .sections[_noteBook
+                                                        .selectedSectionIndex!]
+                                                    .notes[_noteBook
+                                                        .selectedNoteIndex!]
+                                                    .background))
+                                        : Container(),
+                                    // 1 / 2 => !pan => show here => listener is higher than the widgets
+                                    ...PaintElement.buildWidgets(
+                                        canvasState == CanvasState.pan
+                                            ? false
+                                            : true,
+                                        context,
+                                        _paintElements!,
+                                        offset,
+                                        canvasState != CanvasState.pan
+                                            ? true
+                                            : false, refreshFromElement: () {
+                                      setState(() {});
+                                    }, onDeleteImage: (appwriteFileID) async {
+                                      await appwriteStorage.deleteFile(
+                                          bucketId: imageStorageID,
+                                          fileId: appwriteFileID);
+                                      setState(() {
+                                        _paintElements!.removeWhere((element) =>
+                                            element is PaintImage &&
+                                            (element).appwriteFileId ==
+                                                appwriteFileID);
+                                        saveToAppwrite();
+                                      });
+                                    }),
                                     Listener(
                                       onPointerDown: (event) {
                                         _pointerMap[event.pointer] = PointerMap(
@@ -847,13 +1012,9 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                                             stylusAvailable) {
                                           canvasState = CanvasState.pan;
                                         }
-                                        if (canvasState == CanvasState.lasso) {
-                                          _lassoSelection = LassoSelection(
-                                              vm.Vector2(
-                                                  event.localPosition.dx -
-                                                      offset.dx,
-                                                  event.localPosition.dy -
-                                                      offset.dy));
+                                        if (canvasState == CanvasState.select) {
+                                          _handleSelectionDown(event);
+
                                           return;
                                         }
                                         if (_pointerMap.length > 1) {
@@ -861,21 +1022,17 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                                           canvasState = CanvasState.zoom;
                                         } else if (canvasState ==
                                             CanvasState.draw) {
-                                          if (_lassoSelection != null ||
+                                          if (_currentSelection != null ||
                                               _selectedElements != null) {
-                                            _lassoSelection = null;
                                             _selectedElements = [];
+                                            _currentSelection = null;
                                           }
+
                                           lineStart = vm.Vector2(
                                               event.localPosition.dx -
                                                   offset.dx,
                                               event.localPosition.dy -
                                                   offset.dy);
-
-                                          // _currentLineFragment = LineFragment(
-                                          //     event.localPosition.dx - offset.dx,
-                                          //     event.localPosition.dy - offset.dy,
-                                          //     paint);
                                         } else if (canvasState ==
                                             CanvasState.erase) {
                                           _lineEraser = LineEraser(
@@ -895,26 +1052,7 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                                           //     event.localPosition.dy - offset.dy));
                                         } else if (canvasState ==
                                             CanvasState.form) {
-                                          if (Forms.line == selectedForm) {
-                                            _lineForm = LineForm(
-                                                vm.Vector2(
-                                                    event.localPosition.dx -
-                                                        offset.dx,
-                                                    event.localPosition.dy -
-                                                        offset.dy),
-                                                vm.Vector2(
-                                                    event.localPosition.dx -
-                                                        offset.dx,
-                                                    event.localPosition.dy -
-                                                        offset.dy),
-                                                _currentPaint);
-                                            // _lineForm = LineForm(
-                                            //     LNPoint(event.localPosition.dx - offset.dx,
-                                            //         event.localPosition.dy - offset.dy),
-                                            //     LNPoint(event.localPosition.dx - offset.dx,
-                                            //         event.localPosition.dy - offset.dy),
-                                            //     paint);
-                                          }
+                                          _handleFormDown(event);
                                         }
                                         setState(() {});
                                       },
@@ -951,24 +1089,9 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                                           }
                                           return;
                                         }
-                                        if (canvasState == CanvasState.lasso) {
-                                          setState(() {
-                                            if (_lassoSelection == null) {
-                                              _lassoSelection = LassoSelection(
-                                                  vm.Vector2(
-                                                      event.localPosition.dx -
-                                                          offset.dx,
-                                                      event.localPosition.dy -
-                                                          offset.dy));
-                                            } else {
-                                              _lassoSelection!.addLassoPoint(
-                                                  vm.Vector2(
-                                                      event.localPosition.dx -
-                                                          offset.dx,
-                                                      event.localPosition.dy -
-                                                          offset.dy));
-                                            }
-                                          });
+                                        if (canvasState == CanvasState.select) {
+                                          _handleSelectionMove(event);
+
                                           return;
                                         }
 
@@ -1055,32 +1178,7 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                                           }
                                         } else if (canvasState ==
                                             CanvasState.form) {
-                                          if (Forms.line == selectedForm) {
-                                            setState(() {
-                                              if (_lineForm == null) {
-                                                _lineForm = LineForm(
-                                                    vm.Vector2(
-                                                        event.localPosition.dx -
-                                                            offset.dx,
-                                                        event.localPosition.dy -
-                                                            offset.dy),
-                                                    vm.Vector2(
-                                                        event.localPosition.dx -
-                                                            offset.dx,
-                                                        event.localPosition.dy -
-                                                            offset.dy),
-                                                    _currentPaint);
-                                                print("Line Form was null");
-                                              } else {
-                                                _lineForm!.setEndpoint(
-                                                    event.localPosition.dx -
-                                                        offset.dx,
-                                                    event.localPosition.dy -
-                                                        offset.dy);
-                                                print("Line Form was not null");
-                                              }
-                                            });
-                                          }
+                                          _handleFormMove(event);
                                         }
                                       },
                                       onPointerUp: (event) {
@@ -1089,31 +1187,8 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                                             _pointerMap.isEmpty) {
                                           canvasState = CanvasState.pan;
                                         }
-                                        if (canvasState == CanvasState.lasso) {
-                                          if (_lassoSelection == null) {
-                                            showFlashTopBar(
-                                                "Error in Lasso selection",
-                                                false);
-                                            return;
-                                          } else {
-                                            int count = 0;
-                                            _selectedElements = [];
-                                            for (int i = 0;
-                                                i < _paintElements!.length;
-                                                i++) {
-                                              if (_paintElements![i]
-                                                  .checkLassoSelection(
-                                                      _lassoSelection!)) {
-                                                _selectedElements!
-                                                    .add(_paintElements![i]);
-
-                                                count++;
-                                              }
-                                            }
-                                            print("Lasso Count: $count");
-                                            _lassoSelection = null;
-                                            setState(() {});
-                                          }
+                                        if (canvasState == CanvasState.select) {
+                                          _handleSelectionUp(event);
                                         }
                                         if (canvasState == CanvasState.draw) {
                                           if (_currentLine != null) {
@@ -1151,33 +1226,7 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                                           }
                                         } else if (canvasState ==
                                             CanvasState.form) {
-                                          if (Forms.line == selectedForm) {
-                                            if (_lineForm != null) {
-                                              _lineForm!.setEndpoint(
-                                                  event.localPosition.dx -
-                                                      offset.dx,
-                                                  event.localPosition.dy -
-                                                      offset.dy);
-                                              setState(() {
-                                                if (_lineForm!.isLineAPoint()) {
-                                                  _paintElements!.add(Point(
-                                                      _lineForm!.a.x,
-                                                      _lineForm!.a.y,
-                                                      _currentPaint));
-                                                  print(
-                                                      "Added a Point from LineForm");
-                                                } else {
-                                                  _paintElements!
-                                                      .add(_lineForm!);
-                                                  _lineForm = null;
-                                                  print("Added a Line Form");
-                                                }
-                                              });
-                                              _lineForm = null;
-                                            } else {
-                                              print("Line form is null");
-                                            }
-                                          }
+                                          _handleFormEnd(event);
                                         }
                                         // setState(() {})
                                       },
@@ -1192,8 +1241,8 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                                               painter: CanvasCustomPainter(
                                                 // _paintElements!,
                                                 _currentLine,
-                                                _lineForm,
-                                                _lassoSelection,
+                                                _currentForm,
+                                                _currentSelection,
                                                 offset,
                                               ),
                                               // painter: BackgroundPainter(offset),
@@ -1203,7 +1252,11 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                                         ],
                                       )),
                                     ),
+                                    // 2 / 2 => =pan ? => show here => listener is lower than the widgets => drag & drop images and texts
                                     ...PaintElement.buildWidgets(
+                                        canvasState == CanvasState.pan
+                                            ? true
+                                            : false,
                                         context,
                                         _paintElements!,
                                         offset,
@@ -1225,19 +1278,11 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                                     }),
                                     _selectedElements != null &&
                                             _selectedElements!.isNotEmpty
-                                        ? LassoSelection.buildSelection(
+                                        ? SelectionBase.buildSelection(
                                             _selectedElements!, offset, (() {
                                             setState(() {});
                                           }))
                                         : Container(),
-                                    // Image.file(File(
-                                    //     "/Users/sebastian/Library/Containers/de.skyface753.skynote/Data/Library/Caches/image.png"))
-                                    // testTextElement
-                                    //     .getWidget(context, offset, false, () {
-                                    //   setState(() {});
-                                    // })
-                                    // _testPaintImage.build(offset,
-                                    //     canvasState != CanvasState.pan ? true : false)
                                   ]),
                                 ))))
                       ],
@@ -1354,34 +1399,29 @@ class CanvasCustomPainter extends CustomPainter {
   Offset offset;
   // final Paint _drawingPaint;
   int paintElementsCount = 0;
-  final LineForm? _lineForm;
-  final LassoSelection? _lassoSelection;
+  // final LineForm? _lineForm;
+  BaseForm? _baseForm;
+  final SelectionBase? _selectionBase;
 
   CanvasCustomPainter(
     this._currentDrawingLine,
-    this._lineForm,
-    this._lassoSelection,
+    this._baseForm,
+    this._selectionBase,
     this.offset,
   );
 
   @override
   void paint(Canvas canvas, Size size) {
-    // paintElementsCount = _paintElements.length;
-
-    // for (final paintElement in _paintElements) {
-    //   paintElement.draw(canvas, offset, size.width, size.height);
-    // }
-
     if (_currentDrawingLine != null) {
       _currentDrawingLine!.drawCurrent(canvas, offset, size.width, size.height);
     }
 
-    if (_lineForm != null) {
-      _lineForm!.drawCurrent(canvas, offset, size.width, size.height);
+    if (_baseForm != null) {
+      _baseForm!.drawCurrent(canvas, offset, size.width, size.height);
     }
 
-    if (_lassoSelection != null) {
-      _lassoSelection!.drawCurrent(canvas, offset, size.width, size.height);
+    if (_selectionBase != null) {
+      _selectionBase!.drawCurrent(canvas, offset, size.width, size.height);
     }
   }
 

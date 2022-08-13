@@ -2,81 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:skynote/models/base_paint_element.dart';
 import 'package:vector_math/vector_math_64.dart' as vm;
 
-class LassoSelection {
+abstract class SelectionBase {
   vm.Vector2 startPoint;
-  List<vm.Vector2> lassoPoints = [];
 
-  LassoSelection(this.startPoint);
+  SelectionBase(this.startPoint);
 
-  void addLassoPoint(vm.Vector2 point) {
-    lassoPoints.add(point);
-  }
-
-  bool _trianglePointCollsion(
-      vm.Vector2 a, vm.Vector2 b, vm.Vector2 c, vm.Vector2 p) {
-    double areaOrig =
-        ((b.x - a.x) * (c.y - a.y) - (c.x - a.x) * (b.y - a.y)).abs();
-
-    double areaABP =
-        ((a.x - p.x) * (b.y - p.y) - (b.x - p.x) * (a.y - p.y)).abs();
-    double areaBCP =
-        ((b.x - p.x) * (c.y - p.y) - (c.x - p.x) * (b.y - p.y)).abs();
-    double areaCAP =
-        ((c.x - p.x) * (a.y - p.y) - (a.x - p.x) * (c.y - p.y)).abs();
-
-    double area = areaABP + areaBCP + areaCAP;
-    return area == areaOrig;
-  }
-
-  bool checkCollision(vm.Vector2 otherPoint) {
-    // var startPoint = lassoPoints.first;
-    for (int i = 1; i < lassoPoints.length; i++) {
-      var currentPoint = lassoPoints[i];
-      var lastPoint = lassoPoints[i - 1];
-      if (_trianglePointCollsion(
-          startPoint, lastPoint, currentPoint, otherPoint)) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  void drawCurrent(Canvas canvas, Offset offset, double width, double height) {
-    if (lassoPoints.isEmpty) {
-      return;
-    }
-    // var path = Path();
-    // path.moveTo(
-    //     lassoPoints.first.x + offset.dx, lassoPoints.first.y + offset.dy);
-    for (int i = 1; i < lassoPoints.length; i++) {
-      var currentPoint = lassoPoints[i];
-      var lastPoint = lassoPoints[i - 1];
-      canvas.drawLine(
-          Offset(currentPoint.x + offset.dx, currentPoint.y + offset.dy),
-          Offset(lastPoint.x + offset.dx, lastPoint.y + offset.dy),
-          Paint()
-            ..color = Colors.red
-            ..strokeWidth = 2);
-    }
-    canvas.drawLine(
-        Offset(startPoint.x + offset.dx, startPoint.y + offset.dy),
-        Offset(lassoPoints.last.x + offset.dx, lassoPoints.last.y + offset.dy),
-        Paint()
-          ..color = Colors.red
-          ..strokeWidth = 2);
-    // path.lineTo(
-    //     lassoPoints.first.x + offset.dx, lassoPoints.first.y + offset.dy);
-    // canvas.drawPath(path, Paint()..color = Colors.red);
-  }
+  void setPoint(vm.Vector2 point);
+  bool checkCollision(vm.Vector2 otherPoint);
+  void drawCurrent(Canvas canvas, Offset offset, double width, double height);
 
   static Widget buildSelection(
     List<PaintElement> paintElements,
     Offset offset,
     VoidCallback refreshFromElement,
   ) {
-    // if (paintElements == null || paintElements.length == 0) {
-    //   return null;
-    // }
     Offset? startMoveOffset;
     double leftest, rightest, topest, bottomest;
     bottomest = paintElements.first.getBottomY();

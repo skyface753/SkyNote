@@ -50,6 +50,7 @@ dependencies:
   pasteboard: ^0.2.0
   crypto: ^3.0.2
   vector_math: ^2.1.2
+  arrow_path: ^3.0.0
 
 dev_dependencies:
   flutter_test:

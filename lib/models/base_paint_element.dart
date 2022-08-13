@@ -1,15 +1,22 @@
 import 'package:flutter/material.dart';
-import 'package:skynote/models/lasso_selection.dart';
+import 'package:skynote/models/forms/arrow.dart';
+import 'package:skynote/models/forms/circle.dart';
+import 'package:skynote/models/forms/rect.dart';
+import 'package:skynote/models/forms/triangle.dart';
+import 'package:skynote/models/selections/lasso_selection.dart';
 import 'package:skynote/models/line.dart';
 import 'package:skynote/models/line_eraser.dart';
-import 'package:skynote/models/line_form.dart';
+import 'package:skynote/models/forms/line.dart';
 import 'package:skynote/models/paint_image.dart';
 import 'package:skynote/models/point.dart';
+import 'package:skynote/models/selections/selection_base.dart';
 import 'package:skynote/models/text.dart';
 import 'package:skynote/models/types.dart';
 
 abstract class PaintElement {
   Paint paint;
+  // TODO
+  // bool isRenderd = false;
   PaintElement(Paint currpaint)
       : paint = Paint()
           ..color = currpaint.color
@@ -17,7 +24,6 @@ abstract class PaintElement {
           ..style = currpaint.style
           ..strokeCap = currpaint.strokeCap;
 
-  // void draw(Canvas canvas, Offset offset, double width, double height);
   Widget? build(
       BuildContext context,
       Offset offset,
@@ -27,7 +33,7 @@ abstract class PaintElement {
       VoidCallback refreshFromElement,
       ValueChanged<String> onDeleteImage);
   bool intersectAsSegments(LineEraser lineEraser);
-  bool checkLassoSelection(LassoSelection lassoSelection);
+  bool checkSelection(SelectionBase selection);
   Map<String, dynamic> toJson();
 
   double getLeftX();
@@ -51,6 +57,14 @@ abstract class PaintElement {
         return PaintImage.fromJson(e, imageLoadCallback);
       } else if (e['type'] == PaintElementTypes.textElement.index) {
         return TextElement.fromJson(e);
+      } else if (e['type'] == PaintElementTypes.rectForm.index) {
+        return RectForm.fromJson(e);
+      } else if (e['type'] == PaintElementTypes.circleForm.index) {
+        return CircleForm.fromJson(e);
+      } else if (e['type'] == PaintElementTypes.triangleForm.index) {
+        return TriangleForm.fromJson(e);
+      } else if (e['type'] == PaintElementTypes.arrowForm.index) {
+        return ArrowForm.fromJson(e);
       } else {
         throw Exception('Unknown type: ${e['type']}');
       }
@@ -58,6 +72,7 @@ abstract class PaintElement {
   }
 
   static List<Widget> buildWidgets(
+    bool shouldRender,
     BuildContext context,
     List<PaintElement> paintElements,
     Offset offset,
@@ -68,7 +83,9 @@ abstract class PaintElement {
     double width = MediaQuery.of(context).size.width;
     double height = MediaQuery.of(context).size.height;
     List<Widget> widgets = [];
-
+    if (!shouldRender) {
+      return widgets;
+    }
     for (PaintElement paintElement in paintElements) {
       Widget? widget = paintElement.build(context, offset, width, height,
           disableGestureDetection, refreshFromElement, onDeleteImage);

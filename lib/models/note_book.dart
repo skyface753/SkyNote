@@ -9,7 +9,7 @@ class NoteBook {
   List<NoteSection> sections = [];
   int? selectedSectionIndex;
   int? selectedNoteIndex;
-  Background defaultBackground = Background.lines;
+  // Background defaultBackground = Background.lines;
 
   NoteBook(this.name);
 
@@ -33,7 +33,7 @@ class NoteBook {
       'sections': sections.map((section) => section.toJson()).toList(),
       'selectedSectionIndex': selectedSectionIndex,
       'selectedNoteIndex': selectedNoteIndex,
-      'defaultBackground': backgroundToJson(defaultBackground),
+      // 'defaultBackground': backgroundToJson(defaultBackground),
     };
   }
 
@@ -43,8 +43,7 @@ class NoteBook {
         sections = List<NoteSection>.from(json['sections'].map(
             (section) => NoteSection.fromJson(section, imageLoadCallback))),
         selectedSectionIndex = json['selectedSectionIndex'],
-        selectedNoteIndex = json['selectedNoteIndex'],
-        defaultBackground = backgroundFromJson(json['defaultBackground']);
+        selectedNoteIndex = json['selectedNoteIndex'];
 
   @override
   toString() {
@@ -122,6 +121,7 @@ class Note {
   String name;
   Offset? lastPos;
   List<PaintElement> elements = [];
+  Background background = Background.lines;
 
   Note(
     this.name,
@@ -145,6 +145,7 @@ class Note {
               'y': lastPos?.dy,
             }
           : null,
+      'background': backgroundToJson(background),
     };
   }
 
@@ -153,5 +154,6 @@ class Note {
         elements = PaintElement.fromJson(json['elements'], paintImageCallback),
         lastPos = json['lastPos'] != null
             ? Offset(json['lastPos']['x'], json['lastPos']['y'])
-            : null;
+            : null,
+        background = backgroundFromJson(json['background']);
 }

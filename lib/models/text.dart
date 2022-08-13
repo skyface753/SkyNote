@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:skynote/models/base_paint_element.dart';
-import 'package:skynote/models/lasso_selection.dart';
+import 'package:skynote/models/selections/lasso_selection.dart';
 import 'package:skynote/models/line_eraser.dart';
 import 'package:skynote/models/point.dart';
+import 'package:skynote/models/selections/selection_base.dart';
 import 'package:skynote/models/types.dart';
 import 'package:vector_math/vector_math_64.dart' as vm;
 
@@ -141,16 +142,16 @@ class TextElement extends PaintElement {
   }
 
   @override
-  bool checkLassoSelection(LassoSelection lassoSelection) {
+  bool checkSelection(SelectionBase selection) {
     var textWidth = _textWidth(text);
     var textHeight = _textHeight(text);
     vm.Vector2 topRight = vm.Vector2(pos.x + textWidth, pos.y);
     vm.Vector2 bottomLeft = vm.Vector2(pos.x, pos.y + textHeight);
     vm.Vector2 bottomRight = vm.Vector2(topRight.x, bottomLeft.y);
-    if (lassoSelection.checkCollision(pos) &&
-        lassoSelection.checkCollision(topRight) &&
-        lassoSelection.checkCollision(bottomLeft) &&
-        lassoSelection.checkCollision(bottomRight)) {
+    if (selection.checkCollision(pos) &&
+        selection.checkCollision(topRight) &&
+        selection.checkCollision(bottomLeft) &&
+        selection.checkCollision(bottomRight)) {
       return true;
     }
     return false;

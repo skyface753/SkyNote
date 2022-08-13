@@ -3,8 +3,9 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:skynote/helpers/paint_convert.dart';
 import 'package:skynote/models/base_paint_element.dart';
-import 'package:skynote/models/lasso_selection.dart';
+import 'package:skynote/models/selections/lasso_selection.dart';
 import 'package:skynote/models/line_eraser.dart';
+import 'package:skynote/models/selections/selection_base.dart';
 import 'package:skynote/models/types.dart';
 import 'package:vector_math/vector_math_64.dart' as vm;
 
@@ -99,11 +100,11 @@ class Point extends PaintElement {
   }
 
   @override
-  bool checkLassoSelection(LassoSelection lassoSelection) {
+  bool checkSelection(SelectionBase selection) {
     if (!isRenderd) {
       return false;
     }
-    if (lassoSelection.checkCollision(vm.Vector2(x, y))) {
+    if (selection.checkCollision(vm.Vector2(x, y))) {
       return true;
     }
     return false;

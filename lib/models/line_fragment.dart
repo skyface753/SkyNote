@@ -3,9 +3,10 @@ import 'dart:math';
 import 'dart:ui';
 
 import 'package:skynote/models/line_eraser.dart';
+import 'package:skynote/models/selections/selection_base.dart';
 import 'package:vector_math/vector_math_64.dart' as vm;
 
-import 'lasso_selection.dart';
+import 'selections/lasso_selection.dart';
 
 class LineFragment {
   final vm.Vector2 a;
@@ -36,11 +37,11 @@ class LineFragment {
     }
   }
 
-  bool checkLassoSelection(LassoSelection lassoSelection) {
+  bool checkSelection(SelectionBase selection) {
     if (!isRenderd) {
       return false;
     }
-    if (lassoSelection.checkCollision(a) && lassoSelection.checkCollision(b)) {
+    if (selection.checkCollision(a) && selection.checkCollision(b)) {
       return true;
     } else {
       return false;

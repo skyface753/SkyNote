@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:skynote/models/base_paint_element.dart';
-import 'package:skynote/models/lasso_selection.dart';
+import 'package:skynote/models/selections/lasso_selection.dart';
 import 'package:skynote/models/line_fragment.dart';
 import 'package:skynote/models/point.dart';
+import 'package:skynote/models/selections/selection_base.dart';
 import 'package:skynote/models/types.dart';
 
 class Line extends PaintElement {
@@ -54,13 +55,13 @@ class Line extends PaintElement {
   }
 
   @override
-  bool checkLassoSelection(LassoSelection lassoSelection) {
+  bool checkSelection(SelectionBase selection) {
     if (!isLineRendered) {
       return false;
     }
     bool allIn = true;
     for (LineFragment fragment in fragments) {
-      if (!fragment.checkLassoSelection(lassoSelection)) {
+      if (!fragment.checkSelection(selection)) {
         allIn = false;
       }
     }
@@ -188,6 +189,6 @@ class LinePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(CustomPainter oldDelegate) {
-    return false;
+    return true;
   }
 }

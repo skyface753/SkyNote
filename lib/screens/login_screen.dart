@@ -31,7 +31,9 @@ class LoginScreenState extends State<LoginScreen> {
             Navigator.pushReplacementNamed(context, '/')
           });
     } catch (e) {
-      _btnController.error();
+      setState(() {
+        _btnController.error();
+      });
       print(e);
     }
   }
@@ -65,6 +67,9 @@ class LoginScreenState extends State<LoginScreen> {
               onChanged: (value) => _btnController.reset(),
               onSubmitted: (value) => login(),
             ),
+            _btnController.currentState == ButtonState.error
+                ? Text('Invalid email or password')
+                : Container(),
             RoundedLoadingButton(
               controller: _btnController,
               onPressed: () {

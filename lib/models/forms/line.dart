@@ -1,21 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:skynote/models/base_paint_element.dart';
-import 'package:skynote/models/lasso_selection.dart';
+import 'package:skynote/models/forms/form_base.dart';
+import 'package:skynote/models/selections/lasso_selection.dart';
 import 'package:skynote/models/line_eraser.dart';
 import 'package:skynote/models/point.dart';
 import 'package:skynote/models/types.dart';
 import 'package:vector_math/vector_math_64.dart' as vm;
 
-class LineForm extends PaintElement {
+import '../selections/selection_base.dart';
+
+class LineForm extends PaintElement with BaseForm {
   vm.Vector2 a;
   vm.Vector2 b;
 
   LineForm(this.a, this.b, Paint paint) : super(paint);
 
-  void setEndpoint(double x, double y) {
-    b = vm.Vector2(x, y);
+  void setEndpoint(vm.Vector2 point) {
+    b = point;
   }
 
+  @override
   void drawCurrent(Canvas canvas, Offset offset, double width, double height) {
     // Todo Check if line is in bounds
     canvas.drawLine(Offset(a.x + offset.dx, a.y + offset.dy),
@@ -68,7 +72,7 @@ class LineForm extends PaintElement {
     return false;
   }
 
-  bool isLineAPoint() {
+  bool isItAPoint() {
     return a.x == b.x && a.y == b.y;
   }
 
@@ -104,8 +108,8 @@ class LineForm extends PaintElement {
   }
 
   @override
-  bool checkLassoSelection(LassoSelection lassoSelection) {
-    if (lassoSelection.checkCollision(a) && lassoSelection.checkCollision(b)) {
+  bool checkSelection(SelectionBase selection) {
+    if (selection.checkCollision(a) && selection.checkCollision(b)) {
       return true;
     } else {
       return false;
