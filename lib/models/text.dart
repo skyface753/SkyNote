@@ -27,69 +27,59 @@ class TextElement extends PaintElement {
       Offset offset,
       double width,
       double height,
-      bool disableGestureDetection,
       VoidCallback refreshFromElement,
       ValueChanged<String> onDeleteImage) {
-    // disableGestureDetection = false;
-    if (disableGestureDetection) {
-      return (Positioned(
-        left: pos.x + offset.dx,
-        top: pos.y + offset.dy,
-        child: showText(),
-      ));
-    } else {
-      return (Positioned(
-        left: pos.x + offset.dx,
-        top: pos.y + offset.dy,
-        child: GestureDetector(
-            onTap: () {
-              // Show text input dialog
-              showDialog(
-                context: context,
-                builder: (BuildContext context) {
-                  return AlertDialog(
-                    title: const Text('Edit text'),
-                    content: TextField(
-                      autofocus: true,
-                      controller: TextEditingController(text: text),
-                      onChanged: (String newText) {
-                        text = newText;
-                      },
-                      onSubmitted: (String newText) {
-                        text = newText;
+    return (Positioned(
+      left: pos.x + offset.dx,
+      top: pos.y + offset.dy,
+      child: GestureDetector(
+          onTap: () {
+            // Show text input dialog
+            showDialog(
+              context: context,
+              builder: (BuildContext context) {
+                return AlertDialog(
+                  title: const Text('Edit text'),
+                  content: TextField(
+                    autofocus: true,
+                    controller: TextEditingController(text: text),
+                    onChanged: (String newText) {
+                      text = newText;
+                    },
+                    onSubmitted: (String newText) {
+                      text = newText;
+                      refreshFromElement();
+                      Navigator.of(context).pop();
+                    },
+                    keyboardType: TextInputType.multiline,
+                    maxLines: null,
+                  ),
+                  actions: <Widget>[
+                    ElevatedButton(
+                      child: const Text('Ok'),
+                      onPressed: () {
                         refreshFromElement();
                         Navigator.of(context).pop();
                       },
-                      keyboardType: TextInputType.multiline,
-                      maxLines: null,
                     ),
-                    actions: <Widget>[
-                      ElevatedButton(
-                        child: const Text('Ok'),
-                        onPressed: () {
-                          refreshFromElement();
-                          Navigator.of(context).pop();
-                        },
-                      ),
-                    ],
-                  );
-                },
-              );
-            },
-            onPanUpdate: (DragUpdateDetails details) {
-              pos = vm.Vector2(
-                  pos.x + details.delta.dx, pos.y + details.delta.dy);
-              refreshFromElement();
-            },
-            onPanEnd: (DragEndDetails details) {
-              // Position to a mod 20
-              pos.y = (pos.y / 20).round() * 20 + 3;
-              // pos.x = pos.x %
-              refreshFromElement();
-            },
-            child: showText()),
-      ));
-    }
+                  ],
+                );
+              },
+            );
+          },
+          onPanUpdate: (DragUpdateDetails details) {
+            pos =
+                vm.Vector2(pos.x + details.delta.dx, pos.y + details.delta.dy);
+            refreshFromElement();
+          },
+          onPanEnd: (DragEndDetails details) {
+            // Position to a mod 20
+            pos.y = (pos.y / 20).round() * 20 + 3;
+            // pos.x = pos.x %
+            refreshFromElement();
+          },
+          child: showText()),
+    ));
   }
 
   @override

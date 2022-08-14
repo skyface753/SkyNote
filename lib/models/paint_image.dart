@@ -2,6 +2,7 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:appwrite/appwrite.dart';
+import 'package:dismissible_page/dismissible_page.dart';
 import 'package:flutter/material.dart';
 import 'package:skynote/appwrite.dart';
 import 'package:skynote/models/base_paint_element.dart';
@@ -43,7 +44,6 @@ class PaintImage extends PaintElement {
       Offset offset,
       double screenWidth,
       double screenHeight,
-      bool disableGestureDetection,
       VoidCallback refreshFromElement,
       ValueChanged<String> onDeleteImage) {
     if (_imageData == null) {
@@ -77,115 +77,115 @@ class PaintImage extends PaintElement {
       return Positioned(
         left: offset.dx + a.x,
         top: offset.dy + a.y,
-        child: disableGestureDetection
-            ? Image.memory(_imageData!, width: width, height: height)
-            : Stack(
-                alignment: Alignment.bottomRight,
-                children: [
-                  GestureDetector(
-                    onLongPress: () {
-                      showMenu(
-                          context: context,
-                          position: RelativeRect.fromLTRB(
-                              a.x, a.y, screenWidth - a.x, screenHeight - a.y),
-                          items: [
-                            const PopupMenuItem(
-                              value: 'delete',
-                              child: const Text('Delete'),
-                            ),
-                          ]).then((value) {
-                        if (value == 'delete') {
-                          onDeleteImage(appwriteFileId);
-                          refreshFromElement();
-                        }
-                      });
-                    },
-                    onPanStart: (details) {
-                      startPointDragAndDrop = details.localPosition;
-                    },
-                    onPanUpdate: (details) {
-                      if (startPointDragAndDrop == null) {
-                        return;
-                      }
-                      print("Drag and drop");
-                      double dx =
-                          details.localPosition.dx - startPointDragAndDrop!.dx;
-                      double dy =
-                          details.localPosition.dy - startPointDragAndDrop!.dy;
-                      setState(() {
-                        a = vm.Vector2(a.x + dx, a.y + dy);
-                      });
-                      startPointDragAndDrop = details.localPosition;
-                    },
-                    onPanEnd: (details) {
-                      startPointDragAndDrop = null;
-                    },
-                    child:
-                        Image.memory(_imageData!, width: width, height: height),
-                  ),
-                  Container(
-                    height: 10,
-                    width: 10,
-                    color: Colors.red,
-                    // Scaling the image
-                    child: GestureDetector(
-                      onPanUpdate: (details) {
-                        Offset currentPosition = details.globalPosition;
-                        var widthAtoCurrent = currentPosition.dx - a.x;
-                        var heightAtoCurrent = currentPosition.dy - a.y;
+        child: Stack(
+          alignment: Alignment.bottomRight,
+          children: [
+            GestureDetector(
+              onLongPress: () {
+                showMenu(
+                    context: context,
+                    position: RelativeRect.fromLTRB(
+                        a.x, a.y, screenWidth - a.x, screenHeight - a.y),
+                    items: [
+                      const PopupMenuItem(
+                        value: 'delete',
+                        child: const Text('Delete'),
+                      ),
+                    ]).then((value) {
+                  if (value == 'delete') {
+                    onDeleteImage(appwriteFileId);
+                    refreshFromElement();
+                  }
+                });
+              },
+              onPanStart: (details) {
+                startPointDragAndDrop = details.localPosition;
+              },
+              onPanUpdate: (details) {
+                if (startPointDragAndDrop == null) {
+                  return;
+                }
+                print("Drag and drop");
+                double dx =
+                    details.localPosition.dx - startPointDragAndDrop!.dx;
+                double dy =
+                    details.localPosition.dy - startPointDragAndDrop!.dy;
+                setState(() {
+                  a = vm.Vector2(a.x + dx, a.y + dy);
+                });
+                startPointDragAndDrop = details.localPosition;
+              },
+              onPanEnd: (details) {
+                startPointDragAndDrop = null;
+              },
+              onDoubleTap: () {
+                print("Double Tap an image");
+                context.pushTransparentRoute(ImagePage(_imageData!));
+              },
+              child: Image.memory(_imageData!, width: width, height: height),
+            ),
+            Container(
+              height: 10,
+              width: 10,
+              color: Colors.red,
+              // Scaling the image
+              child: GestureDetector(
+                onPanUpdate: (details) {
+                  Offset currentPosition = details.globalPosition;
+                  var widthAtoCurrent = currentPosition.dx - a.x;
+                  var heightAtoCurrent = currentPosition.dy - a.y;
 
-                        print(
-                            "widthAtoCurrent: $widthAtoCurrent heightAtoCurrent: $heightAtoCurrent");
-                        setState(() {
-                          width = widthAtoCurrent;
-                          height = heightAtoCurrent;
-                        });
+                  print(
+                      "widthAtoCurrent: $widthAtoCurrent heightAtoCurrent: $heightAtoCurrent");
+                  setState(() {
+                    width = widthAtoCurrent;
+                    height = heightAtoCurrent;
+                  });
 
-                        // var newWidth =
-                        //     width + (currentPosition.dx - startPointScale!.dx);
-                        // var newHeight =
-                        //     height + (currentPosition.dy - startPointScale!.dy);
-                        // print(
-                        //     "old width: $width, old height: $height new width: $newWidth, new height: $newHeight");
+                  // var newWidth =
+                  //     width + (currentPosition.dx - startPointScale!.dx);
+                  // var newHeight =
+                  //     height + (currentPosition.dy - startPointScale!.dy);
+                  // print(
+                  //     "old width: $width, old height: $height new width: $newWidth, new height: $newHeight");
 
-                        // if (newWidth < 10) {
-                        //   newWidth = 10;
-                        // }
-                        // if (newHeight < 10) {
-                        //   newHeight = 10;
-                        // }
+                  // if (newWidth < 10) {
+                  //   newWidth = 10;
+                  // }
+                  // if (newHeight < 10) {
+                  //   newHeight = 10;
+                  // }
 
-                        // // setState(() {
-                        // width = newWidth;
-                        // height = newHeight;
-                        // });
-                        // Adjust the height to keep the aspect ratio
-                        // newHeight = newWidth / aspectRatio;
-                        // if (newWidth > newHeight) {
-                        //   newHeight = newWidth / aspectRatio;
-                        // } else {
-                        //   newWidth = newHeight * aspectRatio;
-                        // }
+                  // // setState(() {
+                  // width = newWidth;
+                  // height = newHeight;
+                  // });
+                  // Adjust the height to keep the aspect ratio
+                  // newHeight = newWidth / aspectRatio;
+                  // if (newWidth > newHeight) {
+                  //   newHeight = newWidth / aspectRatio;
+                  // } else {
+                  //   newWidth = newHeight * aspectRatio;
+                  // }
 
-                        // setState(() {
-                        //   vm.Vector2 currentPoint = vm.Vector2(
-                        //       details.localPosition.dx,
-                        //       details.localPosition.dy);
-                        //   var aspectRatio = width / height;
-                        //   var newWidth =
-                        //       width + (currentPoint.x - a.x) * aspectRatio;
-                        //   var newHeight =
-                        //       height + (currentPoint.y - a.y) * aspectRatio;
-                        //   width = newWidth;
-                        //   height = newHeight;
-                        // });
-                      },
-                      child: Container(
-                          color: Colors.yellow, width: 10, height: 10),
-                    ),
-                  )
-                ],
+                  // setState(() {
+                  //   vm.Vector2 currentPoint = vm.Vector2(
+                  //       details.localPosition.dx,
+                  //       details.localPosition.dy);
+                  //   var aspectRatio = width / height;
+                  //   var newWidth =
+                  //       width + (currentPoint.x - a.x) * aspectRatio;
+                  //   var newHeight =
+                  //       height + (currentPoint.y - a.y) * aspectRatio;
+                  //   width = newWidth;
+                  //   height = newHeight;
+                  // });
+                },
+                child: Container(color: Colors.yellow, width: 10, height: 10),
               ),
+            )
+          ],
+        ),
       );
     });
 
@@ -279,5 +279,30 @@ class PaintImage extends PaintElement {
   void moveByOffset(Offset offset) {
     a.x += offset.dx;
     a.y += offset.dy;
+  }
+}
+
+class ImagePage extends StatelessWidget {
+  final Uint8List _imageData;
+
+  ImagePage(this._imageData);
+
+  @override
+  Widget build(BuildContext context) {
+    return DismissiblePage(
+      onDismissed: () {
+        Navigator.of(context).pop();
+      },
+      // Note that scrollable widget inside DismissiblePage might limit the functionality
+      // If scroll direction matches DismissiblePage direction
+      direction: DismissiblePageDismissDirection.multi,
+      isFullScreen: false,
+      child: Hero(
+        tag: 'Unique tag',
+        child: Image.memory(
+          _imageData,
+        ),
+      ),
+    );
   }
 }

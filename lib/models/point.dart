@@ -38,7 +38,6 @@ class Point extends PaintElement {
       Offset offset,
       double width,
       double height,
-      bool disableGestureDetection,
       VoidCallback refreshFromElement,
       ValueChanged<String> onDeleteImage) {
     bool isInBounds = -offset.dx <= x &&

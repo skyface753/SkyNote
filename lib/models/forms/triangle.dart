@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:skynote/helpers/intersections.dart';
 import 'package:skynote/models/base_paint_element.dart';
 import 'package:skynote/models/forms/form_base.dart';
 import 'package:skynote/models/selections/lasso_selection.dart';
@@ -20,7 +21,6 @@ class TriangleForm extends PaintElement with BaseForm {
       Offset offset,
       double width,
       double height,
-      bool disableGestureDetection,
       VoidCallback refreshFromElement,
       ValueChanged<String> onDeleteImage) {
     return CustomPaint(
@@ -64,10 +64,13 @@ class TriangleForm extends PaintElement with BaseForm {
 
   @override
   double getLeftX() {
-    if (a1.x < b2.x) {
-      return a1.x;
+    double a1Tob2DistanceX = b2.x - a1.x;
+    vm.Vector2 b1 = vm.Vector2(-a1Tob2DistanceX + a1.x, b2.y);
+    vm.Vector2 b3 = vm.Vector2(a1Tob2DistanceX + a1.x, b2.y);
+    if (b1.x < b3.x) {
+      return b1.x;
     } else {
-      return b2.x;
+      return b3.x;
     }
   }
 
@@ -91,7 +94,17 @@ class TriangleForm extends PaintElement with BaseForm {
 
   @override
   bool intersectAsSegments(LineEraser lineEraser) {
-    return false;
+    double a1Tob2DistanceX = b2.x - a1.x;
+    vm.Vector2 b1 = vm.Vector2(-a1Tob2DistanceX + a1.x, b2.y);
+    vm.Vector2 b3 = vm.Vector2(a1Tob2DistanceX + a1.x, b2.y);
+    bool intersectALine = false;
+    if (Intersections.intersectAsSegment(lineEraser.a, lineEraser.b, a1, b1))
+      intersectALine = true; // Top -> Left
+    if (Intersections.intersectAsSegment(lineEraser.a, lineEraser.b, a1, b3))
+      intersectALine = true; // Top -> Right
+    if (Intersections.intersectAsSegment(lineEraser.a, lineEraser.b, b1, b3))
+      intersectALine = true; // Left -> Right
+    return intersectALine;
   }
 
   @override

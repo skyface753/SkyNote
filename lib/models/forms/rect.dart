@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:skynote/helpers/intersections.dart';
 import 'package:skynote/models/base_paint_element.dart';
 import 'package:skynote/models/forms/form_base.dart';
 import 'package:skynote/models/line_eraser.dart';
@@ -20,7 +21,6 @@ class RectForm extends PaintElement with BaseForm {
       Offset offset,
       double width,
       double height,
-      bool disableGestureDetection,
       VoidCallback refreshFromElement,
       ValueChanged<String> onDeleteImage) {
     return CustomPaint(
@@ -84,6 +84,15 @@ class RectForm extends PaintElement with BaseForm {
 
   @override
   bool intersectAsSegments(LineEraser lineEraser) {
+    vm.Vector2 a2 = vm.Vector2(b2.x, a1.y); // top right
+    vm.Vector2 b1 = vm.Vector2(a1.x, b2.y); // bottom left
+
+    if (Intersections.intersectAsSegment(lineEraser.a, lineEraser.b, a1, a2) ||
+        Intersections.intersectAsSegment(lineEraser.a, lineEraser.b, a2, b2) ||
+        Intersections.intersectAsSegment(lineEraser.a, lineEraser.b, b1, b2) ||
+        Intersections.intersectAsSegment(lineEraser.a, lineEraser.b, a1, b1)) {
+      return true;
+    }
     return false;
   }
 

@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:skynote/models/base_paint_element.dart';
 import 'package:skynote/models/forms/form_base.dart';
@@ -18,7 +20,6 @@ class CircleForm extends PaintElement with BaseForm {
       Offset offset,
       double width,
       double height,
-      bool disableGestureDetection,
       VoidCallback refreshFromElement,
       ValueChanged<String> onDeleteImage) {
     return CustomPaint(
@@ -64,6 +65,18 @@ class CircleForm extends PaintElement with BaseForm {
 
   @override
   bool intersectAsSegments(LineEraser lineEraser) {
+    double distanceAX = center.x - lineEraser.a.x;
+    double distanceAY = center.y - lineEraser.a.y;
+    double distanceBX = center.x - lineEraser.b.x;
+    double distanceBY = center.y - lineEraser.b.y;
+
+    double distanceA = sqrt(pow(distanceAX, 2) + pow(distanceAY, 2));
+    double distanceB = sqrt(pow(distanceBX, 2) + pow(distanceBY, 2));
+
+    if (distanceA + distanceB < radius * 2 + 10 &&
+        distanceA + distanceB > radius * 2 - 10) {
+      return true;
+    }
     return false;
   }
 

@@ -6,6 +6,7 @@ import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flash/flash.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 
 import 'package:crypto/crypto.dart';
@@ -37,7 +38,7 @@ import 'package:skynote/models/text.dart';
 import 'package:skynote/screens/all_online_images.dart';
 import 'package:skynote/screens/login_screen.dart';
 import 'package:skynote/screens/notebook_selection_screen.dart';
-import 'package:skynote/widgets/topbar.dart';
+import 'package:skynote/widgets/topbar/topbar.dart';
 import 'package:vector_math/vector_math_64.dart' as vm;
 import 'package:http/io_client.dart';
 import 'package:http/http.dart' as http;
@@ -183,9 +184,10 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
   void addText(String text) async {
     print("Adding Text");
 
-    TextElement newTextElement =
-        TextElement(text, vm.Vector2(-offset.dx, -offset.dy), _currentPaint);
+    TextElement newTextElement = TextElement(
+        text, vm.Vector2(-offset.dx + 20, -offset.dy + 20), _currentPaint);
     _paintElements!.add(newTextElement);
+    canvasState = CanvasState.pan;
     setState(() {});
   }
 
@@ -800,6 +802,8 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
     setState(() {});
   }
 
+  double? lastZoomDistance;
+
   @override
   Widget build(BuildContext context) {
     var shortestSide = MediaQuery.of(context).size.shortestSide;
@@ -837,457 +841,643 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                 title: const Text('Skynote'),
               )
             : null,
-        body: loading == true
-            ? const Center(
-                child: CircularProgressIndicator(),
-              )
-            : _paintElements == null
-                ? Center(
-                    child: ElevatedButton(
-                      child: const Text("Create Section"),
-                      onPressed: () {
-                        scaffoldKey.currentState?.openDrawer();
-                      },
-                    ),
+        // body: AnnotatedRegion<SystemUiOverlayStyle>(
+        //     value: SystemUiOverlayStyle.dark
+        //         .copyWith(statusBarColor: Colors.black),
+        body: Container(
+            color: Colors.black,
+            child: loading == true
+                ? const Center(
+                    child: CircularProgressIndicator(),
                   )
-                : SafeArea(
-                    child: Column(
-                      children: <Widget>[
-                        TopBar(
-                            scaffoldKey,
-                            _paintElements,
-                            colorItems,
-                            formItems,
-                            selectedForm,
-                            strokeWidthItems,
-                            offset,
-                            _currentPaint,
-                            backgroundItems,
-                            _noteBook,
-                            canvasState,
-                            currScale,
-                            selectedPaintColor,
-                            onChangPaintColor: (value) => setState(() {
-                                  selectedPaintColor = value;
-                                  _currentPaint.color = value;
-                                }),
-                            onChangeStrokeWidth: (value) => setState(() {
-                                  _currentPaint.strokeWidth = value;
-                                }),
-                            onChangeForm: (value) => setState(() {
-                                  if (value == Forms.none) {
-                                    canvasState = CanvasState.draw;
-                                  } else {
-                                    canvasState = CanvasState.form;
-                                  }
-                                  selectedForm = value;
-                                }),
-                            onChangeBackground: (value) => setState(() {
-                                  _noteBook
-                                      .sections[_noteBook.selectedSectionIndex!]
-                                      .notes[_noteBook.selectedNoteIndex!]
-                                      .background = value;
-                                }),
-                            onChangeEraseMode: () => setState(() {
-                                  if (canvasState == CanvasState.erase) {
-                                    canvasState = CanvasState.draw;
-                                  } else {
-                                    canvasState = CanvasState.erase;
-                                  }
-                                }),
-                            onChangeLassoMode: () {
-                              setState(() {
-                                if (canvasState == CanvasState.select) {
-                                  canvasState = CanvasState.draw;
-                                } else {
-                                  canvasState = CanvasState.select;
-                                }
-                              });
-                            },
-                            onImagePicker: () async {
-                              print("Add Image");
-                              FilePickerResult? result =
-                                  await FilePicker.platform.pickFiles(
-                                      type: FileType.image,
-                                      allowMultiple: false,
-                                      allowCompression: false);
-
-                              if (result != null) {
-                                String path = result.files.single.path!;
-                                if (path.isNotEmpty) {
-                                  addImage(path);
-                                }
-                              } else {
-                                print("No file selected");
-                                // User canceled the picker
-                              }
-                            },
-                            onSave: () => saveToAppwrite(),
-                            onVerify: () => verifyNotebook(),
-                            onZoomIn: () {
-                              setState(() {
-                                if (currScale < 4) {
-                                  currScale += 0.5;
-                                }
-                              });
-                            },
-                            onZoomOut: () {
-                              setState(() {
-                                if (currScale >= 1.5) {
-                                  currScale -= 0.5;
-                                }
-                              });
-                            },
-                            onGoToHome: () async {
-                              if (await saveToAppwrite()) {
-                                Navigator.pushReplacementNamed(context, "/");
-                              }
-                            },
-                            onCreateTextElement: (String text) {
-                              addText(text);
-                            },
-                            onImagePaste: (path) {
-                              addImage(path);
-                            }),
-                        Expanded(
-                            child: Transform.scale(
-                                scale: currScale,
-                                alignment: Alignment.topLeft,
-                                child: SizedBox.expand(
-                                    child: ClipRRect(
-                                  child: Stack(children: [
-                                    _noteBook.selectedSectionIndex != null &&
-                                            _noteBook.selectedNoteIndex != null
-                                        ? CustomPaint(
-                                            size: Size.infinite,
-                                            willChange: false,
-                                            painter: BackgroundPainter(
-                                                offset,
-                                                _noteBook
-                                                    .sections[_noteBook
-                                                        .selectedSectionIndex!]
-                                                    .notes[_noteBook
-                                                        .selectedNoteIndex!]
-                                                    .background))
-                                        : Container(),
-                                    // 1 / 2 => !pan => show here => listener is higher than the widgets
-                                    ...PaintElement.buildWidgets(
-                                        canvasState == CanvasState.pan
-                                            ? false
-                                            : true,
-                                        context,
-                                        _paintElements!,
-                                        offset,
-                                        canvasState != CanvasState.pan
-                                            ? true
-                                            : false, refreshFromElement: () {
-                                      setState(() {});
-                                    }, onDeleteImage: (appwriteFileID) async {
-                                      await appwriteStorage.deleteFile(
-                                          bucketId: imageStorageID,
-                                          fileId: appwriteFileID);
-                                      setState(() {
-                                        _paintElements!.removeWhere((element) =>
-                                            element is PaintImage &&
-                                            (element).appwriteFileId ==
-                                                appwriteFileID);
-                                        saveToAppwrite();
-                                      });
-                                    }),
-                                    Listener(
-                                      onPointerDown: (event) {
-                                        _pointerMap[event.pointer] = PointerMap(
-                                          vm.Vector2(event.localPosition.dx,
-                                              event.localPosition.dy),
-                                        );
-                                        if (event.kind ==
-                                            PointerDeviceKind.stylus) {
-                                          stylusAvailable = true;
-                                          if (canvasState == CanvasState.pan) {
-                                            canvasState = CanvasState.draw;
-                                          }
-                                        }
-                                        if (event.kind ==
-                                                PointerDeviceKind.touch &&
-                                            stylusAvailable) {
-                                          canvasState = CanvasState.pan;
-                                        }
-                                        if (canvasState == CanvasState.select) {
-                                          _handleSelectionDown(event);
-
-                                          return;
-                                        }
-                                        if (_pointerMap.length > 1) {
-                                          print("More than one pointer");
-                                          canvasState = CanvasState.zoom;
-                                        } else if (canvasState ==
-                                            CanvasState.draw) {
-                                          if (_currentSelection != null ||
-                                              _selectedElements != null) {
-                                            _selectedElements = [];
-                                            _currentSelection = null;
-                                          }
-
-                                          lineStart = vm.Vector2(
-                                              event.localPosition.dx -
-                                                  offset.dx,
-                                              event.localPosition.dy -
-                                                  offset.dy);
-                                        } else if (canvasState ==
-                                            CanvasState.erase) {
-                                          _lineEraser = LineEraser(
-                                            vm.Vector2(
-                                                event.localPosition.dx -
-                                                    offset.dx,
-                                                event.localPosition.dy -
-                                                    offset.dy),
-                                            vm.Vector2(
-                                                event.localPosition.dx -
-                                                    offset.dx,
-                                                event.localPosition.dy -
-                                                    offset.dy),
-                                          );
-                                          // _lineEraser = EraserLine(LNPoint(
-                                          //     event.localPosition.dx - offset.dx,
-                                          //     event.localPosition.dy - offset.dy));
-                                        } else if (canvasState ==
-                                            CanvasState.form) {
-                                          _handleFormDown(event);
+                : _paintElements == null
+                    ? Center(
+                        child: ElevatedButton(
+                          child: const Text("Create Section"),
+                          onPressed: () {
+                            scaffoldKey.currentState?.openDrawer();
+                          },
+                        ),
+                      )
+                    : SafeArea(
+                        child: Column(
+                          children: <Widget>[
+                            TopBar(
+                                scaffoldKey,
+                                _paintElements,
+                                colorItems,
+                                formItems,
+                                selectedForm,
+                                strokeWidthItems,
+                                offset,
+                                _currentPaint,
+                                backgroundItems,
+                                _noteBook,
+                                canvasState,
+                                currScale,
+                                selectedPaintColor,
+                                selectionMode,
+                                onChangPaintColor: (value) => setState(() {
+                                      selectedPaintColor = value;
+                                      _currentPaint.color = value;
+                                      if (_selectedElements != null) {
+                                        for (var element
+                                            in _selectedElements!) {
+                                          element.setColor(value);
                                         }
                                         setState(() {});
-                                      },
-                                      onPointerMove: (event) {
-                                        if (canvasState == CanvasState.zoom) {
-                                          double currPosX =
-                                              event.localPosition.dx;
-                                          double currPosY =
-                                              event.localPosition.dy;
-                                          double lastPosX =
-                                              _pointerMap[event.pointer]!
-                                                  .lastPosition
-                                                  .x;
-                                          double lastPosY =
-                                              _pointerMap[event.pointer]!
-                                                  .lastPosition
-                                                  .y;
-                                          // Distace between the two points
-                                          // d = sqrt((x2 - x1)^2 + (y2 - y1)^2)
-                                          double distance = sqrt(
-                                              pow(currPosX - lastPosX, 2) +
-                                                  pow(currPosY - lastPosY, 2));
-                                          print("Distance: $distance");
-                                          currScale += distance / 100;
-                                          setState(() {});
-                                          try {
-                                            _pointerMap[event.pointer]!
-                                                    .lastPosition =
-                                                vm.Vector2(
-                                                    event.localPosition.dx,
-                                                    event.localPosition.dy);
-                                          } catch (e) {
-                                            print(e);
-                                          }
-                                          return;
-                                        }
-                                        if (canvasState == CanvasState.select) {
-                                          _handleSelectionMove(event);
-
-                                          return;
-                                        }
-
-                                        if (canvasState == CanvasState.pan) {
-                                          setState(() {
-                                            offset += event.delta;
-                                            if (offset.dx > 0) {
-                                              offset = Offset(0, offset.dy);
-                                            }
-                                            if (offset.dy > 0) {
-                                              offset = Offset(offset.dx, 0);
-                                            }
-                                            _noteBook
-                                                .sections[_noteBook
-                                                    .selectedSectionIndex!]
-                                                .notes[_noteBook
-                                                    .selectedNoteIndex!]
-                                                .lastPos = offset;
-                                          });
-                                        } else if (canvasState ==
-                                            CanvasState.draw) {
-                                          if (lineStart == null) {
-                                            lineStart = vm.Vector2(
-                                                event.localPosition.dx -
-                                                    offset.dx,
-                                                event.localPosition.dy -
-                                                    offset.dy);
-                                            // _currentLine = LineNew(
-                                            //     event.localPosition.dx - offset.dx,
-                                            //     event.localPosition.dy - offset.dy,
-                                            //     paint);
-                                          } else {
-                                            setState(() {
-                                              _currentLine ??=
-                                                  Line(_currentPaint);
-                                              _currentLine!.addFragment(
-                                                  LineFragment(
-                                                      lineStart!,
-                                                      vm.Vector2(
-                                                          event.localPosition
-                                                                  .dx -
-                                                              offset.dx,
-                                                          event.localPosition
-                                                                  .dy -
-                                                              offset.dy)));
-                                              lineStart = vm.Vector2(
-                                                  event.localPosition.dx -
-                                                      offset.dx,
-                                                  event.localPosition.dy -
-                                                      offset.dy);
-                                            });
-                                          }
-                                        } else if (canvasState ==
-                                            CanvasState.erase) {
-                                          if (_lineEraser == null) {
-                                            _lineEraser = LineEraser(
-                                                lineStart!,
-                                                vm.Vector2(
-                                                    event.localPosition.dx -
-                                                        offset.dx,
-                                                    event.localPosition.dy -
-                                                        offset.dy));
-                                          } else {
-                                            _lineEraser!.nextPoint(
-                                                event.localPosition.dx -
-                                                    offset.dx,
-                                                event.localPosition.dy -
-                                                    offset.dy);
-                                          }
-                                          bool hasRemoved = false;
-                                          for (int i =
-                                                  _paintElements!.length - 1;
-                                              i >= 0;
-                                              i--) {
-                                            if (_paintElements![i]
-                                                .intersectAsSegments(
-                                                    _lineEraser!)) {
-                                              _paintElements!.removeAt(i);
-                                              hasRemoved = true;
-                                            }
-                                          }
-                                          if (hasRemoved) {
-                                            setState(() {});
-                                          }
-                                        } else if (canvasState ==
-                                            CanvasState.form) {
-                                          _handleFormMove(event);
-                                        }
-                                      },
-                                      onPointerUp: (event) {
-                                        _pointerMap.remove(event.pointer);
-                                        if (canvasState == CanvasState.zoom &&
-                                            _pointerMap.isEmpty) {
-                                          canvasState = CanvasState.pan;
-                                        }
-                                        if (canvasState == CanvasState.select) {
-                                          _handleSelectionUp(event);
-                                        }
-                                        if (canvasState == CanvasState.draw) {
-                                          if (_currentLine != null) {
-                                            if (_currentLine!.fragments.length >
-                                                1) {
-                                              setState(() {
-                                                _paintElements!
-                                                    .add(_currentLine!);
-                                                _currentLine = null;
-                                              });
-                                            } else if (_currentLine!
-                                                    .fragments.length ==
-                                                1) {
-                                              setState(() {
-                                                _paintElements!.add(Point(
-                                                    event.localPosition.dx -
-                                                        offset.dx,
-                                                    event.localPosition.dy -
-                                                        offset.dy,
-                                                    _currentPaint));
-                                                _currentLine = null;
-                                                print("Added a Point");
-                                              });
-                                            }
-                                          } else if (lineStart != null) {
-                                            setState(() {
-                                              _paintElements!.add(Point(
-                                                  event.localPosition.dx -
-                                                      offset.dx,
-                                                  event.localPosition.dy -
-                                                      offset.dy,
-                                                  _currentPaint));
-                                              print("Added a Point2");
-                                            });
-                                          }
-                                        } else if (canvasState ==
-                                            CanvasState.form) {
-                                          _handleFormEnd(event);
-                                        }
-                                        // setState(() {})
-                                      },
-                                      //TODO Test Scrollview (Or show scrollbar)
-                                      child: SizedBox.expand(
-                                          child: Stack(
-                                        fit: StackFit.expand,
-                                        children: [
-                                          ClipRRect(
-                                            child: CustomPaint(
-                                              size: Size.infinite,
-                                              painter: CanvasCustomPainter(
-                                                // _paintElements!,
-                                                _currentLine,
-                                                _currentForm,
-                                                _currentSelection,
-                                                offset,
-                                              ),
-                                              // painter: BackgroundPainter(offset),
-                                              willChange: true,
-                                            ),
-                                          ),
-                                        ],
-                                      )),
-                                    ),
-                                    // 2 / 2 => =pan ? => show here => listener is lower than the widgets => drag & drop images and texts
-                                    ...PaintElement.buildWidgets(
-                                        canvasState == CanvasState.pan
-                                            ? true
-                                            : false,
-                                        context,
-                                        _paintElements!,
-                                        offset,
-                                        canvasState != CanvasState.pan
-                                            ? true
-                                            : false, refreshFromElement: () {
-                                      setState(() {});
-                                    }, onDeleteImage: (appwriteFileID) async {
-                                      await appwriteStorage.deleteFile(
-                                          bucketId: imageStorageID,
-                                          fileId: appwriteFileID);
-                                      setState(() {
-                                        _paintElements!.removeWhere((element) =>
-                                            element is PaintImage &&
-                                            (element).appwriteFileId ==
-                                                appwriteFileID);
-                                        saveToAppwrite();
-                                      });
+                                      }
                                     }),
-                                    _selectedElements != null &&
-                                            _selectedElements!.isNotEmpty
-                                        ? SelectionBase.buildSelection(
-                                            _selectedElements!, offset, (() {
-                                            setState(() {});
-                                          }))
-                                        : Container(),
-                                  ]),
-                                ))))
-                      ],
-                    ),
-                  ));
+                                onChangeStrokeWidth: (value) => setState(() {
+                                      _currentPaint.strokeWidth = value;
+                                      if (_selectedElements != null) {
+                                        for (var element
+                                            in _selectedElements!) {
+                                          element.setStrokeWidth(value);
+                                        }
+                                        setState(() {});
+                                      }
+                                    }),
+                                onChangeForm: (value) => setState(() {
+                                      if (value == Forms.none) {
+                                        canvasState = CanvasState.draw;
+                                      } else {
+                                        canvasState = CanvasState.form;
+                                      }
+                                      selectedForm = value;
+                                    }),
+                                onChangeBackground: (value) => setState(() {
+                                      _noteBook
+                                          .sections[
+                                              _noteBook.selectedSectionIndex!]
+                                          .notes[_noteBook.selectedNoteIndex!]
+                                          .background = value;
+                                    }),
+                                onChangeEraseMode: () => setState(() {
+                                      if (canvasState == CanvasState.erase) {
+                                        canvasState = CanvasState.draw;
+                                      } else {
+                                        canvasState = CanvasState.erase;
+                                      }
+                                    }),
+                                onChangeLassoMode: () {
+                                  setState(() {
+                                    if (canvasState == CanvasState.select) {
+                                      canvasState = CanvasState.draw;
+                                    } else {
+                                      canvasState = CanvasState.select;
+                                    }
+                                  });
+                                },
+                                onImagePicker: () async {
+                                  print("Add Image");
+                                  FilePickerResult? result =
+                                      await FilePicker.platform.pickFiles(
+                                          type: FileType.image,
+                                          allowMultiple: false,
+                                          allowCompression: false);
+
+                                  if (result != null) {
+                                    String path = result.files.single.path!;
+                                    if (path.isNotEmpty) {
+                                      addImage(path);
+                                    }
+                                  } else {
+                                    print("No file selected");
+                                    // User canceled the picker
+                                  }
+                                },
+                                onSave: () => saveToAppwrite(),
+                                onVerify: () => verifyNotebook(),
+                                onZoomIn: () {
+                                  setState(() {
+                                    if (currScale < 4) {
+                                      currScale += 0.5;
+                                    }
+                                  });
+                                },
+                                onZoomOut: () {
+                                  setState(() {
+                                    if (currScale >= 1.5) {
+                                      currScale -= 0.5;
+                                    }
+                                  });
+                                },
+                                onGoToHome: () async {
+                                  if (await saveToAppwrite()) {
+                                    Navigator.pushReplacementNamed(
+                                        context, "/");
+                                  }
+                                },
+                                onCreateTextElement: (String text) {
+                                  addText(text);
+                                },
+                                onImagePaste: (path) {
+                                  addImage(path);
+                                },
+                                onChangeSelectionMode: (newSelectionMode) {
+                                  setState(() {
+                                    canvasState = CanvasState.select;
+                                    selectionMode = newSelectionMode;
+                                  });
+                                }),
+                            Expanded(
+                                child: ColoredBox(
+                                    color: Colors.white,
+                                    child: Transform.scale(
+                                        scale: currScale,
+                                        alignment: Alignment.topLeft,
+                                        child: SizedBox.expand(
+                                            child: RawKeyboardListener(
+                                                focusNode: FocusNode(),
+                                                autofocus: true,
+                                                onKey: (value) {
+                                                  if (value.runtimeType ==
+                                                      RawKeyDownEvent) {
+                                                    print(
+                                                        "Key: ${value.logicalKey.keyId}");
+                                                    if (value
+                                                            .logicalKey.keyId ==
+                                                        0x100000008) {
+                                                      //TODO Check for Windows Key
+                                                      if (_selectedElements !=
+                                                          null) {
+                                                        if (_selectedElements!
+                                                            .isNotEmpty) {
+                                                          for (var element
+                                                              in _selectedElements!) {
+                                                            _paintElements!
+                                                                .remove(
+                                                                    element);
+                                                          }
+                                                          _selectedElements =
+                                                              null;
+                                                          setState(() {});
+                                                        }
+                                                      }
+                                                    }
+                                                  }
+                                                },
+                                                child: ClipRRect(
+                                                  child: Stack(children: [
+                                                    _noteBook.selectedSectionIndex !=
+                                                                null &&
+                                                            _noteBook
+                                                                    .selectedNoteIndex !=
+                                                                null
+                                                        ? CustomPaint(
+                                                            size: Size.infinite,
+                                                            willChange: false,
+                                                            painter: BackgroundPainter(
+                                                                offset,
+                                                                _noteBook
+                                                                    .sections[
+                                                                        _noteBook
+                                                                            .selectedSectionIndex!]
+                                                                    .notes[_noteBook
+                                                                        .selectedNoteIndex!]
+                                                                    .background))
+                                                        : Container(),
+                                                    // 1 / 2 => !pan => show here => listener is higher than the widgets
+                                                    ...PaintElement.buildWidgets(
+                                                        canvasState ==
+                                                                CanvasState.pan
+                                                            ? false
+                                                            : true,
+                                                        context,
+                                                        _paintElements!,
+                                                        offset,
+                                                        refreshFromElement: () {
+                                                      setState(() {});
+                                                    }, onDeleteImage:
+                                                            (appwriteFileID) async {
+                                                      await appwriteStorage
+                                                          .deleteFile(
+                                                              bucketId:
+                                                                  imageStorageID,
+                                                              fileId:
+                                                                  appwriteFileID);
+                                                      setState(() {
+                                                        _paintElements!.removeWhere((element) =>
+                                                            element
+                                                                is PaintImage &&
+                                                            (element)
+                                                                    .appwriteFileId ==
+                                                                appwriteFileID);
+                                                        saveToAppwrite();
+                                                      });
+                                                    }),
+                                                    Listener(
+                                                      onPointerDown: (event) {
+                                                        _pointerMap[
+                                                                event.pointer] =
+                                                            PointerMap(
+                                                          vm.Vector2(
+                                                              event
+                                                                  .localPosition
+                                                                  .dx,
+                                                              event
+                                                                  .localPosition
+                                                                  .dy),
+                                                        );
+                                                        if (event.kind ==
+                                                            PointerDeviceKind
+                                                                .stylus) {
+                                                          stylusAvailable =
+                                                              true;
+                                                          if (canvasState ==
+                                                              CanvasState.pan) {
+                                                            canvasState =
+                                                                CanvasState
+                                                                    .draw;
+                                                          }
+                                                        }
+                                                        if (event.kind ==
+                                                                PointerDeviceKind
+                                                                    .touch &&
+                                                            stylusAvailable) {
+                                                          canvasState =
+                                                              CanvasState.pan;
+                                                        }
+                                                        if (canvasState ==
+                                                            CanvasState
+                                                                .select) {
+                                                          _handleSelectionDown(
+                                                              event);
+
+                                                          return;
+                                                        }
+                                                        if (_pointerMap.length >
+                                                            1) {
+                                                          print(
+                                                              "More than one pointer");
+                                                          canvasState =
+                                                              CanvasState.zoom;
+                                                        } else if (canvasState ==
+                                                            CanvasState.draw) {
+                                                          if (_currentSelection !=
+                                                                  null ||
+                                                              _selectedElements !=
+                                                                  null) {
+                                                            _selectedElements =
+                                                                [];
+                                                            _currentSelection =
+                                                                null;
+                                                          }
+
+                                                          lineStart = vm.Vector2(
+                                                              event.localPosition
+                                                                      .dx -
+                                                                  offset.dx,
+                                                              event.localPosition
+                                                                      .dy -
+                                                                  offset.dy);
+                                                        } else if (canvasState ==
+                                                            CanvasState.erase) {
+                                                          _lineEraser =
+                                                              LineEraser(
+                                                            vm.Vector2(
+                                                                event.localPosition
+                                                                        .dx -
+                                                                    offset.dx,
+                                                                event.localPosition
+                                                                        .dy -
+                                                                    offset.dy),
+                                                            vm.Vector2(
+                                                                event.localPosition
+                                                                        .dx -
+                                                                    offset.dx,
+                                                                event.localPosition
+                                                                        .dy -
+                                                                    offset.dy),
+                                                          );
+                                                          // _lineEraser = EraserLine(LNPoint(
+                                                          //     event.localPosition.dx - offset.dx,
+                                                          //     event.localPosition.dy - offset.dy));
+                                                        } else if (canvasState ==
+                                                            CanvasState.form) {
+                                                          _handleFormDown(
+                                                              event);
+                                                        }
+                                                        setState(() {});
+                                                      },
+                                                      onPointerMove: (event) {
+                                                        if (canvasState ==
+                                                            CanvasState.zoom) {
+                                                          double currPosX =
+                                                              event
+                                                                  .localPosition
+                                                                  .dx;
+                                                          double currPosY =
+                                                              event
+                                                                  .localPosition
+                                                                  .dy;
+                                                          double lastPosX =
+                                                              _pointerMap[event
+                                                                      .pointer]!
+                                                                  .lastPosition
+                                                                  .x;
+                                                          double lastPosY =
+                                                              _pointerMap[event
+                                                                      .pointer]!
+                                                                  .lastPosition
+                                                                  .y;
+                                                          // Distace between the two points
+                                                          // d = sqrt((x2 - x1)^2 + (y2 - y1)^2)
+                                                          double distance = sqrt(pow(
+                                                                  currPosX -
+                                                                      lastPosX,
+                                                                  2) +
+                                                              pow(
+                                                                  currPosY -
+                                                                      lastPosY,
+                                                                  2));
+                                                          print(
+                                                              "Distance: $distance");
+                                                          // double scale =
+                                                          //     lastZoomDistance -
+                                                          //         distance;
+                                                          //TODO
+
+                                                          currScale +=
+                                                              distance / 100;
+                                                          setState(() {});
+                                                          try {
+                                                            _pointerMap[event
+                                                                        .pointer]!
+                                                                    .lastPosition =
+                                                                vm.Vector2(
+                                                                    event
+                                                                        .localPosition
+                                                                        .dx,
+                                                                    event
+                                                                        .localPosition
+                                                                        .dy);
+                                                          } catch (e) {
+                                                            print(e);
+                                                          }
+                                                          return;
+                                                        }
+                                                        if (canvasState ==
+                                                            CanvasState
+                                                                .select) {
+                                                          _handleSelectionMove(
+                                                              event);
+
+                                                          return;
+                                                        }
+
+                                                        if (canvasState ==
+                                                            CanvasState.pan) {
+                                                          setState(() {
+                                                            offset +=
+                                                                event.delta;
+                                                            if (offset.dx > 0) {
+                                                              offset = Offset(
+                                                                  0, offset.dy);
+                                                            }
+                                                            if (offset.dy > 0) {
+                                                              offset = Offset(
+                                                                  offset.dx, 0);
+                                                            }
+                                                            _noteBook
+                                                                .sections[_noteBook
+                                                                    .selectedSectionIndex!]
+                                                                .notes[_noteBook
+                                                                    .selectedNoteIndex!]
+                                                                .lastPos = offset;
+                                                          });
+                                                        } else if (canvasState ==
+                                                            CanvasState.draw) {
+                                                          if (lineStart ==
+                                                              null) {
+                                                            lineStart = vm.Vector2(
+                                                                event.localPosition
+                                                                        .dx -
+                                                                    offset.dx,
+                                                                event.localPosition
+                                                                        .dy -
+                                                                    offset.dy);
+                                                            // _currentLine = LineNew(
+                                                            //     event.localPosition.dx - offset.dx,
+                                                            //     event.localPosition.dy - offset.dy,
+                                                            //     paint);
+                                                          } else {
+                                                            setState(() {
+                                                              _currentLine ??= Line(
+                                                                  _currentPaint);
+                                                              _currentLine!.addFragment(LineFragment(
+                                                                  lineStart!,
+                                                                  vm.Vector2(
+                                                                      event.localPosition
+                                                                              .dx -
+                                                                          offset
+                                                                              .dx,
+                                                                      event.localPosition
+                                                                              .dy -
+                                                                          offset
+                                                                              .dy)));
+                                                              lineStart = vm.Vector2(
+                                                                  event.localPosition
+                                                                          .dx -
+                                                                      offset.dx,
+                                                                  event.localPosition
+                                                                          .dy -
+                                                                      offset
+                                                                          .dy);
+                                                            });
+                                                          }
+                                                        } else if (canvasState ==
+                                                            CanvasState.erase) {
+                                                          if (_lineEraser ==
+                                                              null) {
+                                                            _lineEraser = LineEraser(
+                                                                lineStart!,
+                                                                vm.Vector2(
+                                                                    event.localPosition
+                                                                            .dx -
+                                                                        offset
+                                                                            .dx,
+                                                                    event.localPosition
+                                                                            .dy -
+                                                                        offset
+                                                                            .dy));
+                                                          } else {
+                                                            _lineEraser!.nextPoint(
+                                                                event.localPosition
+                                                                        .dx -
+                                                                    offset.dx,
+                                                                event.localPosition
+                                                                        .dy -
+                                                                    offset.dy);
+                                                          }
+                                                          bool hasRemoved =
+                                                              false;
+                                                          for (int i =
+                                                                  _paintElements!
+                                                                          .length -
+                                                                      1;
+                                                              i >= 0;
+                                                              i--) {
+                                                            if (_paintElements![
+                                                                    i]
+                                                                .intersectAsSegments(
+                                                                    _lineEraser!)) {
+                                                              _paintElements!
+                                                                  .removeAt(i);
+                                                              hasRemoved = true;
+                                                            }
+                                                          }
+                                                          if (hasRemoved) {
+                                                            setState(() {});
+                                                          }
+                                                        } else if (canvasState ==
+                                                            CanvasState.form) {
+                                                          _handleFormMove(
+                                                              event);
+                                                        }
+                                                      },
+                                                      onPointerUp: (event) {
+                                                        _pointerMap.remove(
+                                                            event.pointer);
+                                                        if (canvasState ==
+                                                                CanvasState
+                                                                    .zoom &&
+                                                            _pointerMap
+                                                                .isEmpty) {
+                                                          canvasState =
+                                                              CanvasState.pan;
+                                                        }
+                                                        if (canvasState ==
+                                                            CanvasState
+                                                                .select) {
+                                                          _handleSelectionUp(
+                                                              event);
+                                                        }
+                                                        if (canvasState ==
+                                                            CanvasState.draw) {
+                                                          if (_currentLine !=
+                                                              null) {
+                                                            if (_currentLine!
+                                                                    .fragments
+                                                                    .length >
+                                                                1) {
+                                                              setState(() {
+                                                                _paintElements!.add(
+                                                                    _currentLine!);
+                                                                _currentLine =
+                                                                    null;
+                                                              });
+                                                            } else if (_currentLine!
+                                                                    .fragments
+                                                                    .length ==
+                                                                1) {
+                                                              setState(() {
+                                                                _paintElements!.add(Point(
+                                                                    event.localPosition
+                                                                            .dx -
+                                                                        offset
+                                                                            .dx,
+                                                                    event.localPosition
+                                                                            .dy -
+                                                                        offset
+                                                                            .dy,
+                                                                    _currentPaint));
+                                                                _currentLine =
+                                                                    null;
+                                                                print(
+                                                                    "Added a Point");
+                                                              });
+                                                            }
+                                                          } else if (lineStart !=
+                                                              null) {
+                                                            setState(() {
+                                                              _paintElements!.add(Point(
+                                                                  event.localPosition
+                                                                          .dx -
+                                                                      offset.dx,
+                                                                  event.localPosition
+                                                                          .dy -
+                                                                      offset.dy,
+                                                                  _currentPaint));
+                                                              print(
+                                                                  "Added a Point2");
+                                                            });
+                                                          }
+                                                        } else if (canvasState ==
+                                                            CanvasState.form) {
+                                                          _handleFormEnd(event);
+                                                        }
+                                                        // setState(() {})
+                                                      },
+                                                      //TODO Test Scrollview (Or show scrollbar)
+                                                      child: SizedBox.expand(
+                                                          child: Stack(
+                                                        fit: StackFit.expand,
+                                                        children: [
+                                                          ClipRRect(
+                                                            child: CustomPaint(
+                                                              size:
+                                                                  Size.infinite,
+                                                              painter:
+                                                                  CanvasCustomPainter(
+                                                                // _paintElements!,
+                                                                _currentLine,
+                                                                _currentForm,
+                                                                _currentSelection,
+                                                                offset,
+                                                              ),
+                                                              // painter: BackgroundPainter(offset),
+                                                              willChange: true,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      )),
+                                                    ),
+                                                    // 2 / 2 => =pan ? => show here => listener is lower than the widgets => drag & drop images and texts
+                                                    ...PaintElement.buildWidgets(
+                                                        canvasState ==
+                                                                CanvasState.pan
+                                                            ? true
+                                                            : false,
+                                                        context,
+                                                        _paintElements!,
+                                                        offset,
+                                                        refreshFromElement: () {
+                                                      setState(() {});
+                                                    }, onDeleteImage:
+                                                            (appwriteFileID) async {
+                                                      await appwriteStorage
+                                                          .deleteFile(
+                                                              bucketId:
+                                                                  imageStorageID,
+                                                              fileId:
+                                                                  appwriteFileID);
+                                                      setState(() {
+                                                        _paintElements!.removeWhere((element) =>
+                                                            element
+                                                                is PaintImage &&
+                                                            (element)
+                                                                    .appwriteFileId ==
+                                                                appwriteFileID);
+                                                        saveToAppwrite();
+                                                      });
+                                                    }),
+                                                    _selectedElements != null &&
+                                                            _selectedElements!
+                                                                .isNotEmpty
+                                                        ? SelectionBase
+                                                            .buildSelection(
+                                                                _selectedElements!,
+                                                                offset, (() {
+                                                            setState(() {});
+                                                          }))
+                                                        : Container(),
+                                                  ]),
+                                                ))))))
+                          ],
+                        ),
+                      )));
   }
 }
 

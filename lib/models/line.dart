@@ -28,14 +28,8 @@ class Line extends PaintElement {
   }
 
   @override
-  Widget build(
-      BuildContext context,
-      Offset offset,
-      double width,
-      double height,
-      bool disableGestureDetection,
-      VoidCallback refreshFromElement,
-      ValueChanged<String> onDeleteImage) {
+  Widget build(BuildContext context, Offset offset, double width, double height,
+      VoidCallback refreshFromElement, ValueChanged<String> onDeleteImage) {
     Path path = Path();
     Path? currentPath;
     isLineRendered = false;

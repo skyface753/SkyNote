@@ -29,12 +29,18 @@ abstract class PaintElement {
       Offset offset,
       double width,
       double height,
-      bool disableGestureDetection,
       VoidCallback refreshFromElement,
       ValueChanged<String> onDeleteImage);
   bool intersectAsSegments(LineEraser lineEraser);
   bool checkSelection(SelectionBase selection);
   Map<String, dynamic> toJson();
+  void setStrokeWidth(double width) {
+    paint.strokeWidth = width;
+  }
+
+  void setColor(Color color) {
+    paint.color = color;
+  }
 
   double getLeftX();
   double getRightX();
@@ -75,8 +81,7 @@ abstract class PaintElement {
     bool shouldRender,
     BuildContext context,
     List<PaintElement> paintElements,
-    Offset offset,
-    bool disableGestureDetection, {
+    Offset offset, {
     required VoidCallback refreshFromElement,
     required ValueChanged<String> onDeleteImage,
   }) {
@@ -87,8 +92,8 @@ abstract class PaintElement {
       return widgets;
     }
     for (PaintElement paintElement in paintElements) {
-      Widget? widget = paintElement.build(context, offset, width, height,
-          disableGestureDetection, refreshFromElement, onDeleteImage);
+      Widget? widget = paintElement.build(
+          context, offset, width, height, refreshFromElement, onDeleteImage);
       if (widget != null) {
         widgets.add(widget);
       }

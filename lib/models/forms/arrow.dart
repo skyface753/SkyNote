@@ -22,7 +22,6 @@ class ArrowForm extends PaintElement with BaseForm {
       Offset offset,
       double width,
       double height,
-      bool disableGestureDetection,
       VoidCallback refreshFromElement,
       ValueChanged<String> onDeleteImage) {
     return CustomPaint(

@@ -109,7 +109,7 @@ class NotebookSelectionScreenState extends State<NotebookSelectionScreen> {
                           noteBookId: snapshot.data!.elementAt(index).$id,
                         ),
                       );
-                      Navigator.pushReplacement(context, route);
+                      Navigator.push(context, route);
                     },
                   );
                 },

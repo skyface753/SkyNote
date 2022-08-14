@@ -15,7 +15,11 @@ class LineForm extends PaintElement with BaseForm {
 
   LineForm(this.a, this.b, Paint paint) : super(paint);
 
+  @override
   void setEndpoint(vm.Vector2 point) {
+    if (_isBetween(point.y, a.y - 10, a.y + 10)) {
+      point.y = a.y;
+    }
     b = point;
   }
 
@@ -32,7 +36,6 @@ class LineForm extends PaintElement with BaseForm {
       Offset offset,
       double width,
       double height,
-      bool disableGestureDetection,
       VoidCallback refreshFromElement,
       ValueChanged<String> onDeleteImage) {
     //TODO Check if line is in bounds
@@ -72,6 +75,7 @@ class LineForm extends PaintElement with BaseForm {
     return false;
   }
 
+  @override
   bool isItAPoint() {
     return a.x == b.x && a.y == b.y;
   }
@@ -186,5 +190,13 @@ class LineFormPainter extends CustomPainter {
   @override
   bool shouldRepaint(CustomPainter oldDelegate) {
     return true;
+  }
+}
+
+bool _isBetween(double checkValue, double value1, double value2) {
+  if (value1 > value2) {
+    return checkValue > value2 && checkValue < value1;
+  } else {
+    return checkValue > value1 && checkValue < value2;
   }
 }
