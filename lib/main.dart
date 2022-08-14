@@ -8,6 +8,7 @@ import 'package:flash/flash.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
+import 'dart:html' as webFile;
 
 import 'package:crypto/crypto.dart';
 
@@ -38,6 +39,7 @@ import 'package:skynote/models/text.dart';
 import 'package:skynote/screens/all_online_images.dart';
 import 'package:skynote/screens/login_screen.dart';
 import 'package:skynote/screens/notebook_selection_screen.dart';
+import 'package:skynote/screens/register_screen.dart';
 import 'package:skynote/widgets/topbar/topbar.dart';
 import 'package:vector_math/vector_math_64.dart' as vm;
 import 'package:http/io_client.dart';
@@ -66,7 +68,9 @@ class MyApp extends StatelessWidget {
         routes: {
           '/': (context) => const NotebookSelectionScreen(),
           '/login': (context) => const LoginScreen(),
-          '/online/images': (context) => AllOnlineImagesScreen()
+          '/register': (context) => RegisterPage(),
+          '/online/images': (context) => AllOnlineImagesScreen(),
+
           // '/notebook': (context) => InfiniteCanvasPage(),
         },
         debugShowCheckedModeBanner: false,
@@ -194,38 +198,42 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
   @override
   void initState() {
     getNotebook();
-    // For sharing images coming from outside the app while the app is in the memory
-    _intentDataStreamSubscription = ReceiveSharingIntent.getMediaStream()
-        .listen((List<SharedMediaFile> value) {
-      if (value.isNotEmpty) {
-        addImage(value.first.path);
-      }
-    }, onError: (err) {
-      print("getIntentDataStream error: $err");
-    });
+    if (!kIsWeb) {
+      //Not web
+      // For sharing images coming from outside the app while the app is in the memory
+      _intentDataStreamSubscription = ReceiveSharingIntent.getMediaStream()
+          .listen((List<SharedMediaFile> value) {
+        if (value.isNotEmpty) {
+          addImage(value.first.path);
+        }
+      }, onError: (err) {
+        print("getIntentDataStream error: $err");
+      });
 
-    // For sharing images coming from outside the app while the app is closed
-    ReceiveSharingIntent.getInitialMedia().then((List<SharedMediaFile> value) {
-      if (value.isNotEmpty) {
-        addImage(value.first.path);
-      }
-    });
-    // For sharing or opening urls/text coming from outside the app while the app is in the memory
-    _intentDataStreamSubscription =
-        ReceiveSharingIntent.getTextStream().listen((String value) {
-      if (value.isNotEmpty) {
-        addText(value);
-      }
-    }, onError: (err) {
-      print("getLinkStream error: $err");
-    });
+      // For sharing images coming from outside the app while the app is closed
+      ReceiveSharingIntent.getInitialMedia()
+          .then((List<SharedMediaFile> value) {
+        if (value.isNotEmpty) {
+          addImage(value.first.path);
+        }
+      });
+      // For sharing or opening urls/text coming from outside the app while the app is in the memory
+      _intentDataStreamSubscription =
+          ReceiveSharingIntent.getTextStream().listen((String value) {
+        if (value.isNotEmpty) {
+          addText(value);
+        }
+      }, onError: (err) {
+        print("getLinkStream error: $err");
+      });
 
-    // For sharing or opening urls/text coming from outside the app while the app is closed
-    ReceiveSharingIntent.getInitialText().then((String? value) {
-      if (value != null && value.isNotEmpty) {
-        addText(value);
-      }
-    });
+      // For sharing or opening urls/text coming from outside the app while the app is closed
+      ReceiveSharingIntent.getInitialText().then((String? value) {
+        if (value != null && value.isNotEmpty) {
+          addText(value);
+        }
+      });
+    }
 
     // loading = false;
     super.initState();
@@ -241,6 +249,9 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
     // Init new Notebook and Upload to AppWrite
     if (widget.noteBookId == null) {
       _noteBook = NoteBook("Neues Notizbuch");
+      //TODO Support Web
+      //   if (kIsWeb) {
+      // var file = webFile.File()
       final file = await getLocalFile('neues_notizbuch.json');
       file.writeAsStringSync(_noteBook.toString());
       final inputFile = InputFile(path: file.path, filename: _noteBook.name);

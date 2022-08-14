@@ -76,7 +76,7 @@ class LoginScreenState extends State<LoginScreen> {
                 login();
               },
               child: const Text('Login', style: TextStyle(color: Colors.white)),
-            )
+            ),
             // MaterialButton(
             //   onPressed: () async {
             //     Future result = appwriteAccount.createOAuth2Session(
@@ -94,6 +94,24 @@ class LoginScreenState extends State<LoginScreen> {
             //   },
             //   child: Text('Login with Google'),
             // )
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  'Don\'t have an account?',
+                  style: TextStyle(fontSize: 25.0),
+                ),
+                GestureDetector(
+                  onTap: () {
+                    Navigator.pushNamed(context, '/register');
+                  },
+                  child: Text(
+                    ' Sign Up',
+                    style: TextStyle(fontSize: 25.0, color: Colors.blue),
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
       ),
