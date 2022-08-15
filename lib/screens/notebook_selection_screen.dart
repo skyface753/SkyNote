@@ -1,6 +1,7 @@
 import 'package:appwrite/appwrite.dart';
 import 'package:appwrite/models.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dialogs/flutter_dialogs.dart';
 import 'package:lit_relative_date_time/lit_relative_date_time.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:skynote/appwrite.dart';
@@ -111,6 +112,39 @@ class NotebookSelectionScreenState extends State<NotebookSelectionScreen> {
                       );
                       Navigator.push(context, route);
                     },
+                    trailing: IconButton(
+                      icon: const Icon(Icons.delete),
+                      onPressed: () async {
+                        showPlatformDialog(
+                          context: context,
+                          builder: (context) => BasicDialogAlert(
+                            title: Text("Discard draft?"),
+                            content: Text("Action cannot be undone."),
+                            actions: <Widget>[
+                              BasicDialogAction(
+                                title: Text("Cancel"),
+                                onPressed: () {
+                                  Navigator.pop(context);
+                                },
+                              ),
+                              BasicDialogAction(
+                                title: Text("Delete"),
+                                onPressed: () async {
+                                  await appwriteStorage
+                                      .deleteFile(
+                                          bucketId: '62e2afd619bea62ecafd',
+                                          fileId: snapshot.data!
+                                              .elementAt(index)
+                                              .$id)
+                                      .then((value) => setState(() {}));
+                                  Navigator.pop(context);
+                                },
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
                   );
                 },
                 // },

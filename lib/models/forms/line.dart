@@ -15,11 +15,16 @@ class LineForm extends PaintElement with BaseForm {
 
   LineForm(this.a, this.b, Paint paint) : super(paint);
 
+  static const int lineCorrection = 10;
   @override
   void setEndpoint(vm.Vector2 point) {
-    if (_isBetween(point.y, a.y - 10, a.y + 10)) {
+    if (_isBetween(point.y, a.y - lineCorrection, a.y + lineCorrection)) {
       point.y = a.y;
+    } else if (_isBetween(
+        point.x, a.x - lineCorrection, a.x + lineCorrection)) {
+      point.x = a.x;
     }
+
     b = point;
   }
 

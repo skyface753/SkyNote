@@ -100,7 +100,7 @@ class TextElement extends PaintElement {
 
   TextElement.fromJson(Map<String, dynamic> json)
       : text = json['text'],
-        pos = vm.Vector2(json['posX'], json['posY']),
+        pos = vm.Vector2(json['posX'].toDouble(), json['posY'].toDouble()),
         super(paintConverter.paintFromJson(json['paint']));
 
   @override

@@ -13,7 +13,7 @@ class PaintConverter {
   Paint paintFromJson(Map<String, dynamic> json) {
     return Paint()
       ..color = Color(json['color'])
-      ..strokeWidth = json['strokeWidth']
+      ..strokeWidth = json['strokeWidth'].toDouble()
       ..style = PaintingStyle.values[json['style']]
       ..strokeCap = StrokeCap.values[json['strokeCap']];
   }

@@ -52,7 +52,8 @@ dependencies:
   vector_math: ^2.1.2
   arrow_path: ^3.0.0
   dismissible_page: ^0.7.3
-  modal_progress_hud_nsn: ^0.3.0
+  flutter_dialogs: ^3.0.0
+  # modal_progress_hud_nsn: ^0.3.0
 
 dev_dependencies:
   flutter_test:

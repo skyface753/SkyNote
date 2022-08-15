@@ -234,8 +234,8 @@ class PaintImage extends PaintElement {
   PaintImage.fromJson(Map<String, dynamic> json, VoidCallback imageLoadCallback)
       : appwriteFileId = json['appwriteFileId'],
         a = vm.Vector2(json['aX'], json['aY']),
-        width = json['width'] ?? 100,
-        height = json['height'] ?? 100,
+        width = json['width'].toDouble() ?? 100,
+        height = json['height'].toDouble() ?? 100,
         super(paintConverter.paintFromJson(json['paint'])) {
     downloadImage(imageLoadCallback);
   }

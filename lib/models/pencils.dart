@@ -12,7 +12,7 @@ class Pencil {
   Pencil.empty()
       : style = PaintingStyle.stroke,
         color = Colors.black,
-        strokeWidth = 4.0,
+        strokeWidth = 2.0,
         strokeCap = StrokeCap.round;
 
   Paint getPaint() {

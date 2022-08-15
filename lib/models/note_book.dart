@@ -153,7 +153,8 @@ class Note {
       : name = json['name'],
         elements = PaintElement.fromJson(json['elements'], paintImageCallback),
         lastPos = json['lastPos'] != null
-            ? Offset(json['lastPos']['x'], json['lastPos']['y'])
+            ? Offset(json['lastPos']['x'].toDouble(),
+                json['lastPos']['y'].toDouble())
             : null,
         background = backgroundFromJson(json['background']);
 }

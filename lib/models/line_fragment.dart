@@ -109,8 +109,8 @@ class LineFragment {
   }
 
   LineFragment.fromJson(Map<String, dynamic> json)
-      : a = vm.Vector2(json['aX'], json['aY']),
-        b = vm.Vector2(json['bX'], json['bY']);
+      : a = vm.Vector2(json['aX'].toDouble(), json['aY'].toDouble()),
+        b = vm.Vector2(json['bX'].toDouble(), json['bY'].toDouble());
 }
 
 const double _epsilon = 1e-10;

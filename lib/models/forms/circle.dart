@@ -73,8 +73,8 @@ class CircleForm extends PaintElement with BaseForm {
     double distanceA = sqrt(pow(distanceAX, 2) + pow(distanceAY, 2));
     double distanceB = sqrt(pow(distanceBX, 2) + pow(distanceBY, 2));
 
-    if (distanceA + distanceB < radius * 2 + 10 &&
-        distanceA + distanceB > radius * 2 - 10) {
+    if (distanceA + distanceB < radius * 2 + paint.strokeWidth &&
+        distanceA + distanceB > radius * 2 - paint.strokeWidth) {
       return true;
     }
     return false;

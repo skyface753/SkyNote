@@ -8,7 +8,6 @@ import 'package:flash/flash.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
-import 'dart:html' as webFile;
 
 import 'package:crypto/crypto.dart';
 
@@ -249,13 +248,11 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
     // Init new Notebook and Upload to AppWrite
     if (widget.noteBookId == null) {
       _noteBook = NoteBook("Neues Notizbuch");
-      //TODO Support Web
-      //   if (kIsWeb) {
-      // var file = webFile.File()
-      final file = await getLocalFile('neues_notizbuch.json');
-      file.writeAsStringSync(_noteBook.toString());
-      final inputFile = InputFile(path: file.path, filename: _noteBook.name);
-
+      List<int> bytes = utf8.encode(_noteBook.toString());
+      // final file = await getLocalFile('neues_notizbuch.json');
+      // file.writeAsStringSync(_noteBook.toString());
+      // final inputFile = InputFile(path: file.path, filename: _noteBook.name);
+      final inputFile = InputFile(bytes: bytes, filename: _noteBook.name);
       _noteBook.appwriteFileId = await appwriteStorage
           .createFile(bucketId: storageID, fileId: 'unique()', file: inputFile)
           .then((value) => value.$id);
@@ -295,11 +292,11 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
     setState(() {});
   }
 
-  void verifyNotebook() async {
+  Future<bool> verifyNotebook() async {
     String? notebookId = _noteBook.appwriteFileId;
     if (notebookId == null) {
       showFlashTopBar("Notebook has no ID", false);
-      return;
+      return false;
     }
 
     //AppWrite Notebook Hash
@@ -310,17 +307,20 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
       print("File downloaded (HASH now)");
     } catch (e) {
       showFlashTopBar("Error getting Notebook Hash Online", false);
-      return;
+      return false;
     }
     String fileContent = String.fromCharCodes(file);
+    print(fileContent);
     var appwriteFileHash = sha512.convert(utf8.encode(fileContent)).toString();
 
     //Local Notebook Hash
     String localFileHash = _noteBook.getHash();
+    String localFileContent = _noteBook.toString();
+    print(localFileContent);
     if (appwriteFileHash != localFileHash) {
       showFlashTopBar(
           "Notizbuch wurde geändert (Hash has changed - online)", false);
-      return;
+      return false;
     } else {
       //Test FromJson
       try {
@@ -329,12 +329,14 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
         String testNotebookHash = testNoteBook.getHash();
         if (testNotebookHash == localFileHash) {
           showFlashTopBar("Notizbuch ist aktuell (Hash ist gleich)", true);
+          return true;
         } else {
           showFlashTopBar("Notizbuch Hash Error (Local)", false);
+          return false;
         }
       } catch (e) {
         showFlashTopBar("Fehler beim Laden des Notizbuchs", false);
-        return;
+        return false;
       }
     }
   }
@@ -359,10 +361,16 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
   late NoteBook _noteBook;
 
   Future<bool> saveToAppwrite() async {
+    if (await verifyNotebook()) {
+      showFlashTopBar("No Changes", true);
+      return true;
+    }
     try {
-      final file = await getLocalFile(_noteBook.appwriteFileId ?? 'blub.json');
-      file.writeAsStringSync(_noteBook.toString());
-      final inputFile = InputFile(path: file.path, filename: _noteBook.name);
+      // final file = await getLocalFile(_noteBook.appwriteFileId ?? 'blub.json');
+      // file.writeAsStringSync(_noteBook.toString());
+      List<int> bytes = utf8.encode(_noteBook.toString());
+      final inputFile = InputFile(bytes: bytes, filename: _noteBook.name);
+      // final inputFile = InputFile(path: file.path, filename: _noteBook.name);
       String fileId = _noteBook.appwriteFileId ?? 'unique()';
       if (_noteBook.appwriteFileId != null &&
           oldNotebookName != _noteBook.name) {
@@ -418,13 +426,13 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
   // double dropdownValueStrokeWidth = 4.0;
   // List of items in our dropdown menu
   List<double> strokeWidthItems = [
-    1.0,
-    4.0,
-    7.0,
-    10.0,
-    15.0,
+    0.5,
+    2.0,
+    5.0,
+    8.0,
+    11.0,
   ];
-  double currScale = 1;
+  double currScale = 3;
   double? lastDistance;
   var scaffoldKey = GlobalKey<ScaffoldState>();
 
@@ -962,7 +970,7 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                                 onVerify: () => verifyNotebook(),
                                 onZoomIn: () {
                                   setState(() {
-                                    if (currScale < 4) {
+                                    if (currScale < 10) {
                                       currScale += 0.5;
                                     }
                                   });
@@ -1496,9 +1504,9 @@ class BackgroundPainter extends CustomPainter {
   Offset offset;
   Background background;
   BackgroundPainter(this.offset, this.background);
-  final int lineDistance = 20;
-  final int firstLineY = 40;
-  final int checkeredDistance = 20;
+  final int lineDistance = 10;
+  final int firstLineY = 20;
+  final int checkeredDistance = 10;
   @override
   void paint(Canvas canvas, Size size) {
     Paint backgroundPaint = Paint()..color = Colors.black;
