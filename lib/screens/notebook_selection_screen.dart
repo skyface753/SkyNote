@@ -66,7 +66,11 @@ class NotebookSelectionScreenState extends State<NotebookSelectionScreen> {
             ),
             IconButton(
                 onPressed: () async {
-                  await appwriteAccount.deleteSession(sessionId: 'current');
+                  try {
+                    await appwriteAccount.deleteSession(sessionId: 'current');
+                  } catch (e) {
+                    print("Error in Logout from Appwrite");
+                  }
                   await SharedPreferences.getInstance().then((value) => {
                         value.setBool('isLoggedIn', false),
                         Navigator.pushReplacementNamed(context, '/login')

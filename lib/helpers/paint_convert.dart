@@ -17,4 +17,12 @@ class PaintConverter {
       ..style = PaintingStyle.values[json['style']]
       ..strokeCap = StrokeCap.values[json['strokeCap']];
   }
+
+  List<Map<String, dynamic>> paintsListToJson(List<Paint> paints) {
+    return paints.map((paint) => paintToJson(paint)).toList();
+  }
+
+  List<Paint> paintsListFromJson(List<dynamic> json) {
+    return json.map((paint) => paintFromJson(paint)).toList();
+  }
 }

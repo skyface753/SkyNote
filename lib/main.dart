@@ -30,7 +30,6 @@ import 'package:skynote/models/line_fragment.dart';
 // import 'package:skynote/models/line_fragment.dart';
 import 'package:skynote/models/note_book.dart';
 import 'package:skynote/models/paint_image.dart';
-import 'package:skynote/models/pencils.dart';
 import 'package:skynote/models/point.dart';
 import 'package:skynote/models/selections/rect_selection.dart';
 import 'package:skynote/models/selections/selection_base.dart';
@@ -68,7 +67,7 @@ class MyApp extends StatelessWidget {
           '/': (context) => const NotebookSelectionScreen(),
           '/login': (context) => const LoginScreen(),
           '/register': (context) => RegisterPage(),
-          '/online/images': (context) => AllOnlineImagesScreen(),
+          '/online/images': (context) => const AllOnlineImagesScreen(),
 
           // '/notebook': (context) => InfiniteCanvasPage(),
         },
@@ -157,8 +156,7 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
 
   Storage appwriteStorage = AppWriteCustom().getAppwriteStorage();
 
-  List<Pencil> pencils = Pencil.getDefaultPencils();
-  final Paint _currentPaint = Pencil.empty().getPaint();
+  Paint _currentPaint = getDefaultPaints().first;
 
   late StreamSubscription _intentDataStreamSubscription;
 
@@ -391,16 +389,6 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
   }
 
   // List of items in our dropdown menu
-  List<Color> colorItems = [
-    Colors.indigo,
-    Colors.blue,
-    Colors.green,
-    Colors.yellow,
-    Colors.orange,
-    Colors.red,
-    Colors.black,
-    Colors.white,
-  ];
 
   Color selectedPaintColor = Colors.black;
 
@@ -884,7 +872,6 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                             TopBar(
                                 scaffoldKey,
                                 _paintElements,
-                                colorItems,
                                 formItems,
                                 selectedForm,
                                 strokeWidthItems,
@@ -896,6 +883,7 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                                 currScale,
                                 selectedPaintColor,
                                 selectionMode,
+                                _currentPaint,
                                 onChangPaintColor: (value) => setState(() {
                                       selectedPaintColor = value;
                                       _currentPaint.color = value;
@@ -999,6 +987,11 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                                     canvasState = CanvasState.select;
                                     selectionMode = newSelectionMode;
                                   });
+                                },
+                                onChangePaint: (newPaint) {
+                                  _currentPaint = newPaint;
+                                  setState(() {});
+                                  // getPencilFromNotebook();
                                 }),
                             Expanded(
                                 child: ColoredBox(

@@ -1,3 +1,4 @@
+import 'package:appwrite/models.dart';
 import 'package:flutter/material.dart';
 import 'package:appwrite/appwrite.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -15,6 +16,7 @@ class _RegisterPageState extends State<RegisterPage> {
   TextEditingController _nameController = TextEditingController();
   TextEditingController _emailController = TextEditingController();
   TextEditingController _passwordController = TextEditingController();
+  TextEditingController _confirmPasswordController = TextEditingController();
 
   bool _showSpinner = false;
 
@@ -90,6 +92,16 @@ class _RegisterPageState extends State<RegisterPage> {
                         errorText: _wrongPassword ? _passwordText : null,
                       ),
                     ),
+                    SizedBox(height: 20.0),
+                    TextField(
+                      obscureText: true,
+                      keyboardType: TextInputType.visiblePassword,
+                      controller: _confirmPasswordController,
+                      decoration: InputDecoration(
+                        labelText: 'Password Confirmation',
+                        errorText: _wrongPassword ? _passwordText : null,
+                      ),
+                    ),
                     SizedBox(height: 10.0),
                   ],
                 ),
@@ -99,18 +111,37 @@ class _RegisterPageState extends State<RegisterPage> {
                       _wrongEmail = false;
                       _wrongPassword = false;
                     });
+                    if (_passwordController.text !=
+                        _confirmPasswordController.text) {
+                      setState(() {
+                        _wrongPassword = true;
+                      });
+                      return;
+                    }
                     try {
-                      await appwriteAccount.create(
-                          userId: 'unique()',
-                          email: _emailController.text,
-                          password: _passwordController.text,
-                          name: _nameController.text);
-                      await SharedPreferences.getInstance().then((value) => {
-                            value.setBool('isLoggedIn', true),
-                            Navigator.pushReplacementNamed(context, '/')
-                          });
-                      Navigator.pushReplacementNamed(context, '/');
+                      print("q");
+                      await appwriteAccount
+                          .create(
+                              userId: 'unique()',
+                              email: _emailController.text,
+                              password: _passwordController.text,
+                              name: _nameController.text)
+                          .then((value) async {
+                        await appwriteAccount
+                            .createEmailSession(
+                                email: _emailController.text,
+                                password: _passwordController.text)
+                            .then((value) async => {
+                                  await SharedPreferences.getInstance().then(
+                                      (value) => {
+                                            value.setBool('isLoggedIn', true),
+                                            Navigator.pushReplacementNamed(
+                                                context, '/')
+                                          })
+                                });
+                      });
                     } catch (e) {
+                      print(e);
                       setState(() {
                         _wrongEmail = true;
                         _emailText =
@@ -123,31 +154,31 @@ class _RegisterPageState extends State<RegisterPage> {
                     style: TextStyle(fontSize: 25.0, color: Colors.white),
                   ),
                 ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 10.0),
-                      child: Container(
-                        height: 1.0,
-                        width: 60.0,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    Text(
-                      'Or',
-                      style: TextStyle(fontSize: 25.0),
-                    ),
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 10.0),
-                      child: Container(
-                        height: 1.0,
-                        width: 60.0,
-                        color: Colors.black87,
-                      ),
-                    ),
-                  ],
-                ),
+                // Row(
+                //   mainAxisAlignment: MainAxisAlignment.center,
+                //   children: [
+                //     Padding(
+                //       padding: EdgeInsets.symmetric(horizontal: 10.0),
+                //       child: Container(
+                //         height: 1.0,
+                //         width: 60.0,
+                //         color: Colors.black87,
+                //       ),
+                //     ),
+                //     Text(
+                //       'Or',
+                //       style: TextStyle(fontSize: 25.0),
+                //     ),
+                //     Padding(
+                //       padding: EdgeInsets.symmetric(horizontal: 10.0),
+                //       child: Container(
+                //         height: 1.0,
+                //         width: 60.0,
+                //         color: Colors.black87,
+                //       ),
+                //     ),
+                //   ],
+                // ),
                 // Row(
                 //   children: [
                 //     Expanded(

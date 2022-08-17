@@ -23,7 +23,6 @@ String _formsToString(Forms form) {
 class DrawTopBar extends StatelessWidget {
   final CanvasState canvasState;
   final Color selectedPaintColor;
-  final List<Color> colorItems;
   final Paint currentPaint;
   final List<double> strokeWidthItems;
   final List<Forms> formItems;
@@ -32,23 +31,28 @@ class DrawTopBar extends StatelessWidget {
   final ValueChanged<Color> onChangPaintColor;
   final ValueChanged<double> onChangeStrokeWidth;
   final ValueChanged<Forms> onChangeForm;
+  final List<Paint> paints;
+  final Paint selectedPaint;
+  final ValueChanged<Paint> onChangePaint;
 
   DrawTopBar(
-    this.canvasState,
-    this.selectedPaintColor,
-    this.colorItems,
-    this.currentPaint,
-    this.strokeWidthItems,
-    this.formItems,
-    this.selectedForm,
-    this.onChangeEraseMode,
-    this.onChangPaintColor,
-    this.onChangeStrokeWidth,
-    this.onChangeForm,
-  );
+      this.canvasState,
+      this.selectedPaintColor,
+      this.currentPaint,
+      this.strokeWidthItems,
+      this.formItems,
+      this.selectedForm,
+      this.onChangeEraseMode,
+      this.onChangPaintColor,
+      this.onChangeStrokeWidth,
+      this.onChangeForm,
+      this.paints,
+      this.selectedPaint,
+      this.onChangePaint);
 
   @override
   Widget build(BuildContext context) {
+    print("Paints COunt" + paints.length.toString());
     return Row(
       mainAxisAlignment: MainAxisAlignment.start,
       children: [
@@ -118,8 +122,95 @@ class DrawTopBar extends StatelessWidget {
             onChanged: (Forms? newValue) {
               onChangeForm(newValue!);
             }),
+        //Paints
+        //TODO Default Selected Paint & Load from NoteBook
+        ...PaintsButtons(context, paints, selectedPaint, onChangePaint),
       ],
     );
+  }
+}
+
+List<Widget> PaintsButtons(BuildContext context, List<Paint> paints,
+    Paint selectedPaint, ValueChanged<Paint> onChangePaint) {
+  List<Widget> paintsButtons = [];
+  for (int i = 0; i < paints.length; i++) {
+    paintsButtons.add(
+      SinglePaintButton(
+        paints[i],
+        selectedPaint,
+        onChangePaint,
+      ),
+    );
+  }
+  return paintsButtons;
+}
+
+class SinglePaintButton extends StatelessWidget {
+  final Paint paint;
+  final Paint selectedPaint;
+  final ValueChanged<Paint> onChangePaint;
+
+  SinglePaintButton(this.paint, this.selectedPaint, this.onChangePaint);
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+        color: paint == selectedPaint
+            ? Colors.black.withOpacity(0.5)
+            : Colors.transparent,
+        child: IconButton(
+            icon: const Icon(Icons.brush),
+            color: paint.color,
+            onPressed: () {
+              onChangePaint(paint);
+              showDialog(
+                context: context,
+                builder: (BuildContext context) {
+                  return AlertDialog(
+                    title: Text('Paint'),
+                    content: SizedBox(
+                        width: MediaQuery.of(context).size.width * .7,
+                        // height: 1000,
+                        // width: 1000,
+                        // color: Colors.black,
+                        child: GridView.builder(
+                            shrinkWrap: true,
+                            gridDelegate:
+                                const SliverGridDelegateWithMaxCrossAxisExtent(
+                                    maxCrossAxisExtent: 100,
+                                    childAspectRatio: 3 / 2,
+                                    crossAxisSpacing: 20,
+                                    mainAxisSpacing: 20),
+                            itemCount: colorItems.length,
+                            itemBuilder: (BuildContext ctx, int index) {
+                              return InkWell(
+                                onTap: () {
+                                  paint.color = colorItems[index];
+                                  onChangePaint(paint);
+                                  Navigator.pop(ctx);
+                                  // onChangePaint(paint);
+                                },
+                                child: Container(
+                                  color: colorItems[index],
+                                  child: const SizedBox(
+                                    width: 100,
+                                    height: 100,
+                                  ),
+                                ),
+                              );
+                            })),
+                    actions: <Widget>[
+                      FlatButton(
+                        child: Text('Ok'),
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                        },
+                      ),
+                    ],
+                  );
+                },
+              );
+            }));
   }
 }
 
@@ -141,3 +232,14 @@ class StrokeWidthPreview extends CustomPainter {
     return oldDelegate.strokeWidth != strokeWidth;
   }
 }
+
+List<Color> colorItems = [
+  Colors.indigo,
+  Colors.blue,
+  Colors.green,
+  Colors.yellow,
+  Colors.orange,
+  Colors.red,
+  Colors.black,
+  Colors.white,
+];

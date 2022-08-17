@@ -11,7 +11,6 @@ import 'package:skynote/appwrite.dart';
 import 'package:skynote/main.dart';
 import 'package:skynote/models/base_paint_element.dart';
 import 'package:skynote/models/note_book.dart';
-import 'package:pasteboard/pasteboard.dart';
 import 'package:skynote/widgets/topbar/draw.dart';
 import 'package:skynote/widgets/topbar/insert.dart';
 import 'package:skynote/widgets/topbar/start.dart';
@@ -68,7 +67,6 @@ class TopBarList extends StatelessWidget {
 class TopBar extends StatefulWidget {
   final GlobalKey<ScaffoldState> scaffoldKey;
   final List<PaintElement>? paintElements;
-  final List<Color> colorItems;
   final List<Forms> formItems;
   final Forms selectedForm;
   final List<double> strokeWidthItems;
@@ -80,6 +78,7 @@ class TopBar extends StatefulWidget {
   final double currScale;
   final Color selectedPaintColor;
   final SelectionModes currentSelectionMode;
+  final Paint selectedPaint;
   final ValueChanged<Color> onChangPaintColor;
   final ValueChanged<double> onChangeStrokeWidth;
   final ValueChanged<Forms> onChangeForm;
@@ -95,11 +94,11 @@ class TopBar extends StatefulWidget {
   final ValueChanged<String> onCreateTextElement;
   final ValueChanged<String> onImagePaste;
   final ValueChanged<SelectionModes> onChangeSelectionMode;
+  final ValueChanged<Paint> onChangePaint;
 
   TopBar(
     this.scaffoldKey,
     this.paintElements,
-    this.colorItems,
     this.formItems,
     this.selectedForm,
     this.strokeWidthItems,
@@ -110,7 +109,8 @@ class TopBar extends StatefulWidget {
     this.canvasState,
     this.currScale,
     this.selectedPaintColor,
-    this.currentSelectionMode, {
+    this.currentSelectionMode,
+    this.selectedPaint, {
     Key? key,
     required this.onChangPaintColor,
     required this.onChangeStrokeWidth,
@@ -127,6 +127,7 @@ class TopBar extends StatefulWidget {
     required this.onCreateTextElement,
     required this.onImagePaste,
     required this.onChangeSelectionMode,
+    required this.onChangePaint,
   }) : super(key: key);
   @override
   _TopBarState createState() => _TopBarState();
@@ -202,7 +203,6 @@ class _TopBarState extends State<TopBar> {
                       ? DrawTopBar(
                           widget.canvasState,
                           widget.selectedPaintColor,
-                          widget.colorItems,
                           widget.currentPaint,
                           widget.strokeWidthItems,
                           widget.formItems,
@@ -210,7 +210,10 @@ class _TopBarState extends State<TopBar> {
                           widget.onChangeEraseMode,
                           widget.onChangPaintColor,
                           widget.onChangeStrokeWidth,
-                          widget.onChangeForm)
+                          widget.onChangeForm,
+                          widget.noteBook.paints,
+                          widget.selectedPaint,
+                          widget.onChangePaint)
                       : _selectedMenu == TopBarMenuList.insert
                           ? InsertTopBar(
                               onCreateTextElement: widget.onCreateTextElement,

@@ -2,11 +2,46 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:skynote/models/base_paint_element.dart';
+import 'package:skynote/models/point.dart';
+
+const double defaultStroke = 2;
+List<Paint> getDefaultPaints() {
+  return [
+    Paint()
+      ..style = PaintingStyle.stroke
+      ..color = Colors.black
+      ..strokeWidth = defaultStroke
+      ..strokeCap = StrokeCap.round,
+    Paint()
+      ..style = PaintingStyle.stroke
+      ..color = Colors.red
+      ..strokeWidth = defaultStroke
+      ..strokeCap = StrokeCap.round,
+    Paint()
+      ..style = PaintingStyle.stroke
+      ..color = Colors.green
+      ..strokeWidth = defaultStroke
+      ..strokeCap = StrokeCap.round,
+  ];
+}
+
+List<Paint> paintsFromJson(String json) {
+  final jsonDecoded = jsonDecode(json);
+  return jsonDecoded.map((paint) {
+    return Paint()
+      ..style = PaintingStyle.stroke
+      ..color = Color(int.parse(paint['color']))
+      ..strokeWidth = double.parse(paint['strokeWidth'])
+      ..strokeCap = StrokeCap.round;
+  }).toList();
+}
 
 class NoteBook {
   String? appwriteFileId;
   String name;
   List<NoteSection> sections = [];
+  List<Paint> paints = getDefaultPaints();
+  int selectedPencilIndex = 0;
   int? selectedSectionIndex;
   int? selectedNoteIndex;
   // Background defaultBackground = Background.lines;
@@ -33,6 +68,8 @@ class NoteBook {
       'sections': sections.map((section) => section.toJson()).toList(),
       'selectedSectionIndex': selectedSectionIndex,
       'selectedNoteIndex': selectedNoteIndex,
+      'paints': paintConverter.paintsListToJson(paints),
+      'selectedPencilIndex': selectedPencilIndex,
       // 'defaultBackground': backgroundToJson(defaultBackground),
     };
   }
@@ -43,7 +80,9 @@ class NoteBook {
         sections = List<NoteSection>.from(json['sections'].map(
             (section) => NoteSection.fromJson(section, imageLoadCallback))),
         selectedSectionIndex = json['selectedSectionIndex'],
-        selectedNoteIndex = json['selectedNoteIndex'];
+        selectedNoteIndex = json['selectedNoteIndex'],
+        paints = paintConverter.paintsListFromJson(json['paints']),
+        selectedPencilIndex = json['selectedPencilIndex'] ?? 0;
 
   @override
   toString() {

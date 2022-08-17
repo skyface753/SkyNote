@@ -3,7 +3,6 @@ import 'package:skynote/models/forms/arrow.dart';
 import 'package:skynote/models/forms/circle.dart';
 import 'package:skynote/models/forms/rect.dart';
 import 'package:skynote/models/forms/triangle.dart';
-import 'package:skynote/models/selections/lasso_selection.dart';
 import 'package:skynote/models/line.dart';
 import 'package:skynote/models/line_eraser.dart';
 import 'package:skynote/models/forms/line.dart';
