@@ -59,10 +59,9 @@ class MyApp extends StatelessWidget {
     AppWriteCustom.initAppwrite();
     return MaterialApp(
         title: 'Flutter Demo',
-        theme: ThemeData(
-          primarySwatch: Colors.blue,
-          visualDensity: VisualDensity.adaptivePlatformDensity,
-        ),
+        theme: ThemeClass.darkTheme,
+        themeMode: ThemeMode.dark,
+        darkTheme: ThemeClass.darkTheme,
         routes: {
           '/': (context) => const NotebookSelectionScreen(),
           '/login': (context) => const LoginScreen(),
@@ -74,6 +73,22 @@ class MyApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         initialRoute: '/');
   }
+}
+
+class ThemeClass {
+  static ThemeData lightTheme = ThemeData(
+      scaffoldBackgroundColor: Colors.white,
+      colorScheme: ColorScheme.light(),
+      appBarTheme: AppBarTheme(
+        backgroundColor: Colors.blue,
+      ));
+
+  static ThemeData darkTheme = ThemeData(
+      scaffoldBackgroundColor: Colors.black,
+      colorScheme: ColorScheme.dark(),
+      appBarTheme: AppBarTheme(
+        backgroundColor: Colors.black,
+      ));
 }
 
 enum CanvasState { pan, draw, erase, zoom, form, select }
@@ -393,10 +408,9 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
   Color selectedPaintColor = Colors.black;
 
   List<Background> backgroundItems = [
-    Background.white,
+    Background.none,
     Background.lines,
     Background.checkered,
-    Background.black,
   ];
   // Background selectedBackground = Background.lines;
 
@@ -413,13 +427,7 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
   // Initial Selected Value
   // double dropdownValueStrokeWidth = 4.0;
   // List of items in our dropdown menu
-  List<double> strokeWidthItems = [
-    0.5,
-    2.0,
-    5.0,
-    8.0,
-    11.0,
-  ];
+
   double currScale = 3;
   double? lastDistance;
   var scaffoldKey = GlobalKey<ScaffoldState>();
@@ -429,6 +437,8 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
   String newNotebookName = "";
   String newSectionName = "";
   String newNoteName = "";
+
+  static const double drawerPadding = 10;
 
   Widget mobileDrawer() {
     return Drawer(
@@ -511,176 +521,188 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
           ),
           _noteBook.selectedSectionIndex == null
               ? Container()
-              : ElevatedButton(
-                  onPressed: () {
-                    setState(() {
-                      _noteBook.selectedSectionIndex = null;
-                    });
-                  },
-                  //TODO: Check that section is selected before continuing to draw
-                  child: const Text("Back to Section")),
-          _noteBook.selectedSectionIndex == null
-              ? ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: _noteBook.sections.length,
-                  itemBuilder: (drawercontext, index) {
-                    return ListTile(
-                      title: Text(_noteBook.sections[index].name),
-                      onTap: () {
+              : Padding(
+                  padding: EdgeInsets.all(drawerPadding),
+                  child: ElevatedButton(
+                      onPressed: () {
                         setState(() {
-                          _noteBook.selectedSectionIndex = index;
+                          _noteBook.selectedSectionIndex = null;
                         });
                       },
-                      trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-                        IconButton(
-                          icon: const Icon(Icons.delete),
-                          onPressed: () {
+                      //TODO: Check that section is selected before continuing to draw
+                      child: const Text("Back to Section")),
+                ),
+          Padding(
+              padding: EdgeInsets.all(drawerPadding),
+              child: _noteBook.selectedSectionIndex == null
+                  ? ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: _noteBook.sections.length,
+                      itemBuilder: (drawercontext, index) {
+                        return ListTile(
+                          title: Text(_noteBook.sections[index].name),
+                          onTap: () {
                             setState(() {
-                              _noteBook.sections.removeAt(index);
+                              _noteBook.selectedSectionIndex = index;
                             });
                           },
-                        ),
-                        //Rename
-                        IconButton(
-                          icon: const Icon(Icons.edit),
-                          onPressed: () {
-                            newSectionName = _noteBook.sections[index].name;
-                            showDialog(
-                                context: context,
-                                builder: (context) => AlertDialog(
-                                      title: Text(
-                                          "Rename Section (${_noteBook.sections[index].name})"),
-                                      content: TextField(
-                                        onChanged: (value) {
-                                          newSectionName = value;
-                                        },
-                                      ),
-                                      actions: <Widget>[
-                                        ElevatedButton(
-                                          child: const Text("Cancel"),
-                                          onPressed: () {
-                                            Navigator.of(context).pop();
-                                          },
-                                        ),
-                                        ElevatedButton(
-                                          child: const Text("Rename"),
-                                          onPressed: () {
-                                            setState(() {
-                                              _noteBook.sections[index].name =
-                                                  newSectionName;
-                                            });
-                                            Navigator.of(context).pop();
-                                          },
-                                        ),
-                                      ],
-                                    ));
-                          },
-                        ),
-                      ]),
-                    );
-                  },
-                )
-              :
-              //Notes
-              ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: _noteBook
-                      .sections[_noteBook.selectedSectionIndex!].notes.length,
-                  itemBuilder: (context, index) {
-                    return ListTile(
-                      title: Text(_noteBook
+                          trailing:
+                              Row(mainAxisSize: MainAxisSize.min, children: [
+                            IconButton(
+                              icon: const Icon(Icons.delete),
+                              onPressed: () {
+                                setState(() {
+                                  _noteBook.sections.removeAt(index);
+                                });
+                              },
+                            ),
+                            //Rename
+                            IconButton(
+                              icon: const Icon(Icons.edit),
+                              onPressed: () {
+                                newSectionName = _noteBook.sections[index].name;
+                                showDialog(
+                                    context: context,
+                                    builder: (context) => AlertDialog(
+                                          title: Text(
+                                              "Rename Section (${_noteBook.sections[index].name})"),
+                                          content: TextField(
+                                            onChanged: (value) {
+                                              newSectionName = value;
+                                            },
+                                          ),
+                                          actions: <Widget>[
+                                            ElevatedButton(
+                                              child: const Text("Cancel"),
+                                              onPressed: () {
+                                                Navigator.of(context).pop();
+                                              },
+                                            ),
+                                            ElevatedButton(
+                                              child: const Text("Rename"),
+                                              onPressed: () {
+                                                setState(() {
+                                                  _noteBook.sections[index]
+                                                      .name = newSectionName;
+                                                });
+                                                Navigator.of(context).pop();
+                                              },
+                                            ),
+                                          ],
+                                        ));
+                              },
+                            ),
+                          ]),
+                        );
+                      },
+                    )
+                  :
+                  //Notes
+                  ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: _noteBook
                           .sections[_noteBook.selectedSectionIndex!]
-                          .notes[index]
-                          .name),
-                      onTap: () {
-                        setState(() {
-                          _noteBook.selectedNoteIndex = index;
-                          _paintElements = _noteBook
+                          .notes
+                          .length,
+                      itemBuilder: (context, index) {
+                        return ListTile(
+                          title: Text(_noteBook
                               .sections[_noteBook.selectedSectionIndex!]
-                              .notes[_noteBook.selectedNoteIndex!]
-                              .elements;
-                          // Close the drawer
-                          Navigator.pop(context);
-                        });
-                      },
-                      trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-                        IconButton(
-                          icon: const Icon(Icons.delete),
-                          onPressed: () {
+                              .notes[index]
+                              .name),
+                          onTap: () {
                             setState(() {
-                              _noteBook
+                              _noteBook.selectedNoteIndex = index;
+                              _paintElements = _noteBook
                                   .sections[_noteBook.selectedSectionIndex!]
-                                  .notes
-                                  .removeAt(index);
+                                  .notes[_noteBook.selectedNoteIndex!]
+                                  .elements;
+                              // Close the drawer
+                              Navigator.pop(context);
                             });
                           },
-                        ),
-                        //Rename
-                        IconButton(
-                          icon: const Icon(Icons.edit),
-                          onPressed: () {
-                            newSectionName = _noteBook
-                                .sections[_noteBook.selectedSectionIndex!]
-                                .notes[index]
-                                .name;
-                            showDialog(
-                                context: context,
-                                builder: (context) => AlertDialog(
-                                      title: Text(
-                                          "Rename Note (${_noteBook.sections[_noteBook.selectedSectionIndex!].notes[index].name})"),
-                                      content: TextField(
-                                        onChanged: (value) {
-                                          newNoteName = value;
-                                        },
-                                      ),
-                                      actions: <Widget>[
-                                        ElevatedButton(
-                                          child: const Text("Cancel"),
-                                          onPressed: () {
-                                            Navigator.of(context).pop();
-                                          },
-                                        ),
-                                        ElevatedButton(
-                                          child: const Text("Rename"),
-                                          onPressed: () {
-                                            setState(() {
-                                              _noteBook
-                                                  .sections[_noteBook
-                                                      .selectedSectionIndex!]
-                                                  .notes[index]
-                                                  .name = newNoteName;
-                                            });
-                                            Navigator.of(context).pop();
-                                          },
-                                        ),
-                                      ],
-                                    ));
-                          },
-                        ),
-                      ]),
-                    );
-                  },
-                ),
-          _noteBook.selectedSectionIndex == null
-              ? ElevatedButton(
-                  child: const Text("Add Section"),
-                  onPressed: () {
-                    setState(() {
-                      _noteBook.addSection(NoteSection(
-                          "New Section${_noteBook.sections.length}"));
-                    });
-                  },
-                )
-              : ElevatedButton(
-                  child: const Text("Add Note"),
-                  onPressed: () {
-                    setState(() {
-                      _noteBook.sections[_noteBook.selectedSectionIndex!]
-                          .addNote(Note(
-                              "New Note${_noteBook.sections[_noteBook.selectedSectionIndex!].notes.length}"));
-                    });
-                  },
-                ),
+                          trailing:
+                              Row(mainAxisSize: MainAxisSize.min, children: [
+                            IconButton(
+                              icon: const Icon(Icons.delete),
+                              onPressed: () {
+                                setState(() {
+                                  _noteBook
+                                      .sections[_noteBook.selectedSectionIndex!]
+                                      .notes
+                                      .removeAt(index);
+                                });
+                              },
+                            ),
+                            //Rename
+                            IconButton(
+                              icon: const Icon(Icons.edit),
+                              onPressed: () {
+                                newSectionName = _noteBook
+                                    .sections[_noteBook.selectedSectionIndex!]
+                                    .notes[index]
+                                    .name;
+                                showDialog(
+                                    context: context,
+                                    builder: (context) => AlertDialog(
+                                          title: Text(
+                                              "Rename Note (${_noteBook.sections[_noteBook.selectedSectionIndex!].notes[index].name})"),
+                                          content: TextField(
+                                            onChanged: (value) {
+                                              newNoteName = value;
+                                            },
+                                          ),
+                                          actions: <Widget>[
+                                            ElevatedButton(
+                                              child: const Text("Cancel"),
+                                              onPressed: () {
+                                                Navigator.of(context).pop();
+                                              },
+                                            ),
+                                            ElevatedButton(
+                                              child: const Text("Rename"),
+                                              onPressed: () {
+                                                setState(() {
+                                                  _noteBook
+                                                      .sections[_noteBook
+                                                          .selectedSectionIndex!]
+                                                      .notes[index]
+                                                      .name = newNoteName;
+                                                });
+                                                Navigator.of(context).pop();
+                                              },
+                                            ),
+                                          ],
+                                        ));
+                              },
+                            ),
+                          ]),
+                        );
+                      },
+                    )),
+          Padding(
+            padding: EdgeInsets.all(drawerPadding),
+            child: _noteBook.selectedSectionIndex == null
+                ? ElevatedButton(
+                    child: const Text("Add Section"),
+                    onPressed: () {
+                      setState(() {
+                        _noteBook.addSection(NoteSection(
+                            "New Section${_noteBook.sections.length}"));
+                      });
+                    },
+                  )
+                : ElevatedButton(
+                    child: const Text("Add Note"),
+                    onPressed: () {
+                      setState(() {
+                        _noteBook.sections[_noteBook.selectedSectionIndex!]
+                            .addNote(Note(
+                                "New Note${_noteBook.sections[_noteBook.selectedSectionIndex!].notes.length}"));
+                      });
+                    },
+                  ),
+          )
         ],
       ),
     );
@@ -811,12 +833,19 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
 
   double? lastZoomDistance;
 
+  Background currentBackground = Background.none;
+
   @override
   Widget build(BuildContext context) {
     var shortestSide = MediaQuery.of(context).size.shortestSide;
     useMobileLayout = shortestSide < 600;
     if (useMobileLayout) {
       // print("Mobile Layout");
+    }
+    if (_noteBook.selectedSectionIndex != null &&
+        _noteBook.selectedNoteIndex != null) {
+      currentBackground = _noteBook.sections[_noteBook.selectedSectionIndex!]
+          .notes[_noteBook.selectedNoteIndex!].background;
     }
 
     return Scaffold(
@@ -870,132 +899,117 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                         child: Column(
                           children: <Widget>[
                             TopBar(
-                                scaffoldKey,
-                                _paintElements,
-                                formItems,
-                                selectedForm,
-                                strokeWidthItems,
-                                offset,
-                                _currentPaint,
-                                backgroundItems,
-                                _noteBook,
-                                canvasState,
-                                currScale,
-                                selectedPaintColor,
-                                selectionMode,
-                                _currentPaint,
-                                onChangPaintColor: (value) => setState(() {
-                                      selectedPaintColor = value;
-                                      _currentPaint.color = value;
-                                      if (_selectedElements != null) {
-                                        for (var element
-                                            in _selectedElements!) {
-                                          element.setColor(value);
-                                        }
-                                        setState(() {});
-                                      }
-                                    }),
-                                onChangeStrokeWidth: (value) => setState(() {
-                                      _currentPaint.strokeWidth = value;
-                                      if (_selectedElements != null) {
-                                        for (var element
-                                            in _selectedElements!) {
-                                          element.setStrokeWidth(value);
-                                        }
-                                        setState(() {});
-                                      }
-                                    }),
-                                onChangeForm: (value) => setState(() {
-                                      if (value == Forms.none) {
-                                        canvasState = CanvasState.draw;
-                                      } else {
-                                        canvasState = CanvasState.form;
-                                      }
-                                      selectedForm = value;
-                                    }),
-                                onChangeBackground: (value) => setState(() {
-                                      _noteBook
-                                          .sections[
-                                              _noteBook.selectedSectionIndex!]
-                                          .notes[_noteBook.selectedNoteIndex!]
-                                          .background = value;
-                                    }),
-                                onChangeEraseMode: () => setState(() {
-                                      if (canvasState == CanvasState.erase) {
-                                        canvasState = CanvasState.draw;
-                                      } else {
-                                        canvasState = CanvasState.erase;
-                                      }
-                                    }),
-                                onChangeLassoMode: () {
-                                  setState(() {
-                                    if (canvasState == CanvasState.select) {
-                                      canvasState = CanvasState.draw;
-                                    } else {
-                                      canvasState = CanvasState.select;
-                                    }
-                                  });
-                                },
-                                onImagePicker: () async {
-                                  print("Add Image");
-                                  FilePickerResult? result =
-                                      await FilePicker.platform.pickFiles(
-                                          type: FileType.image,
-                                          allowMultiple: false,
-                                          allowCompression: false);
-
-                                  if (result != null) {
-                                    String path = result.files.single.path!;
-                                    if (path.isNotEmpty) {
-                                      addImage(path);
-                                    }
+                              scaffoldKey,
+                              _paintElements,
+                              formItems,
+                              selectedForm,
+                              offset,
+                              _currentPaint,
+                              backgroundItems,
+                              _noteBook,
+                              canvasState,
+                              currScale,
+                              selectionMode,
+                              _currentPaint,
+                              _noteBook.darkMode,
+                              onChangeForm: (value) => setState(() {
+                                if (value == Forms.none) {
+                                  canvasState = CanvasState.draw;
+                                } else {
+                                  canvasState = CanvasState.form;
+                                }
+                                selectedForm = value;
+                              }),
+                              onChangeBackground: (value) => setState(() {
+                                _noteBook
+                                    .sections[_noteBook.selectedSectionIndex!]
+                                    .notes[_noteBook.selectedNoteIndex!]
+                                    .background = value;
+                              }),
+                              onChangeEraseMode: () => setState(() {
+                                if (canvasState == CanvasState.erase) {
+                                  canvasState = CanvasState.draw;
+                                } else {
+                                  canvasState = CanvasState.erase;
+                                }
+                              }),
+                              onChangeLassoMode: () {
+                                setState(() {
+                                  if (canvasState == CanvasState.select) {
+                                    canvasState = CanvasState.draw;
                                   } else {
-                                    print("No file selected");
-                                    // User canceled the picker
-                                  }
-                                },
-                                onSave: () => saveToAppwrite(),
-                                onVerify: () => verifyNotebook(),
-                                onZoomIn: () {
-                                  setState(() {
-                                    if (currScale < 10) {
-                                      currScale += 0.5;
-                                    }
-                                  });
-                                },
-                                onZoomOut: () {
-                                  setState(() {
-                                    if (currScale >= 1.5) {
-                                      currScale -= 0.5;
-                                    }
-                                  });
-                                },
-                                onGoToHome: () async {
-                                  if (await saveToAppwrite()) {
-                                    Navigator.pushReplacementNamed(
-                                        context, "/");
-                                  }
-                                },
-                                onCreateTextElement: (String text) {
-                                  addText(text);
-                                },
-                                onImagePaste: (path) {
-                                  addImage(path);
-                                },
-                                onChangeSelectionMode: (newSelectionMode) {
-                                  setState(() {
                                     canvasState = CanvasState.select;
-                                    selectionMode = newSelectionMode;
-                                  });
-                                },
-                                onChangePaint: (newPaint) {
-                                  _currentPaint = newPaint;
-                                  setState(() {});
-                                  // getPencilFromNotebook();
-                                }),
+                                  }
+                                });
+                              },
+                              onImagePicker: () async {
+                                print("Add Image");
+                                FilePickerResult? result =
+                                    await FilePicker.platform.pickFiles(
+                                        type: FileType.image,
+                                        allowMultiple: false,
+                                        allowCompression: false);
+
+                                if (result != null) {
+                                  String path = result.files.single.path!;
+                                  if (path.isNotEmpty) {
+                                    addImage(path);
+                                  }
+                                } else {
+                                  print("No file selected");
+                                  // User canceled the picker
+                                }
+                              },
+                              onSave: () => saveToAppwrite(),
+                              onVerify: () => verifyNotebook(),
+                              onZoomIn: () {
+                                setState(() {
+                                  if (currScale < 10) {
+                                    currScale += 0.5;
+                                  }
+                                });
+                              },
+                              onZoomOut: () {
+                                setState(() {
+                                  if (currScale >= 1.5) {
+                                    currScale -= 0.5;
+                                  }
+                                });
+                              },
+                              onGoToHome: () async {
+                                if (await saveToAppwrite()) {
+                                  Navigator.pushReplacementNamed(context, "/");
+                                }
+                              },
+                              onCreateTextElement: (String text) {
+                                addText(text);
+                              },
+                              onImagePaste: (path) {
+                                addImage(path);
+                              },
+                              onChangeSelectionMode: (newSelectionMode) {
+                                setState(() {
+                                  canvasState = CanvasState.select;
+                                  selectionMode = newSelectionMode;
+                                });
+                              },
+                              onChangePaint: (newPaint) {
+                                _currentPaint = newPaint;
+                                canvasState = CanvasState.draw;
+                                setState(() {});
+                                // getPencilFromNotebook();
+                              },
+                              onDarkModeSwitch: () {
+                                setState(() {
+                                  _noteBook.darkMode = !_noteBook.darkMode;
+                                });
+                              },
+                            ),
                             Expanded(
                                 child: ColoredBox(
-                                    color: Colors.white,
+                                    color: _noteBook.darkMode
+                                        ? Colors.black
+                                        : Colors.white,
                                     child: Transform.scale(
                                         scale: currScale,
                                         alignment: Alignment.topLeft,
@@ -1042,13 +1056,9 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                                                             willChange: false,
                                                             painter: BackgroundPainter(
                                                                 offset,
+                                                                currentBackground,
                                                                 _noteBook
-                                                                    .sections[
-                                                                        _noteBook
-                                                                            .selectedSectionIndex!]
-                                                                    .notes[_noteBook
-                                                                        .selectedNoteIndex!]
-                                                                    .background))
+                                                                    .darkMode))
                                                         : Container(),
                                                     // 1 / 2 => !pan => show here => listener is higher than the widgets
                                                     ...PaintElement.buildWidgets(
@@ -1059,6 +1069,7 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                                                         context,
                                                         _paintElements!,
                                                         offset,
+                                                        _noteBook.darkMode,
                                                         refreshFromElement: () {
                                                       setState(() {});
                                                     }, onDeleteImage:
@@ -1243,7 +1254,8 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                                                             CanvasState.pan) {
                                                           setState(() {
                                                             offset +=
-                                                                event.delta;
+                                                                (event.delta /
+                                                                    currScale);
                                                             if (offset.dx > 0) {
                                                               offset = Offset(
                                                                   0, offset.dy);
@@ -1438,6 +1450,8 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                                                                 _currentForm,
                                                                 _currentSelection,
                                                                 offset,
+                                                                _noteBook
+                                                                    .darkMode,
                                                               ),
                                                               // painter: BackgroundPainter(offset),
                                                               willChange: true,
@@ -1455,6 +1469,7 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                                                         context,
                                                         _paintElements!,
                                                         offset,
+                                                        _noteBook.darkMode,
                                                         refreshFromElement: () {
                                                       setState(() {});
                                                     }, onDeleteImage:
@@ -1496,18 +1511,21 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
 class BackgroundPainter extends CustomPainter {
   Offset offset;
   Background background;
-  BackgroundPainter(this.offset, this.background);
+  bool isDarkMode;
+  BackgroundPainter(this.offset, this.background, this.isDarkMode);
   final int lineDistance = 10;
   final int firstLineY = 20;
   final int checkeredDistance = 10;
   @override
   void paint(Canvas canvas, Size size) {
-    Paint backgroundPaint = Paint()..color = Colors.black;
-    if (background == Background.white) {
+    Paint backgroundPaint = Paint()
+      ..color = isDarkMode
+          ? Colors.white.withOpacity(0.3)
+          : Colors.black.withOpacity(0.3)
+      ..strokeWidth = 0.5;
+
+    if (background == Background.none) {
       return;
-    } else if (background == Background.black) {
-      canvas.drawRect(
-          Rect.fromLTWH(0, 0, size.width, size.height), backgroundPaint);
     } else if (background == Background.checkered) {
       for (int i = 0; i < size.width; i += checkeredDistance) {
         canvas.drawLine(
@@ -1560,40 +1578,6 @@ class BackgroundPainter extends CustomPainter {
   }
 }
 
-class BackgroundPreview extends CustomPainter {
-  Background background;
-  BackgroundPreview(this.background);
-  @override
-  void paint(Canvas canvas, Size size) {
-    Paint backgroundPaint = Paint()..color = Colors.black;
-    if (background == Background.white) {
-      return;
-    } else if (background == Background.black) {
-      canvas.drawRect(
-          Rect.fromLTWH(0, 0, size.width, size.height), backgroundPaint);
-    } else if (background == Background.checkered) {
-      for (int i = 0; i < size.width; i += 10) {
-        canvas.drawLine(Offset(i.toDouble(), 0),
-            Offset(i.toDouble(), size.height), backgroundPaint);
-      }
-      for (int i = 0; i < size.height; i += 10) {
-        canvas.drawLine(Offset(0, i.toDouble()),
-            Offset(size.width, i.toDouble()), backgroundPaint);
-      }
-    } else if (background == Background.lines) {
-      for (int i = 0; i < size.height; i += 10) {
-        canvas.drawLine(Offset(0, i.toDouble()),
-            Offset(size.width, i.toDouble()), backgroundPaint);
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(BackgroundPreview oldDelegate) {
-    return false;
-  }
-}
-
 class CanvasCustomPainter extends CustomPainter {
   final Line? _currentDrawingLine;
 
@@ -1604,22 +1588,26 @@ class CanvasCustomPainter extends CustomPainter {
   // final LineForm? _lineForm;
   BaseForm? _baseForm;
   final SelectionBase? _selectionBase;
+  bool isDarkBackground;
 
   CanvasCustomPainter(
     this._currentDrawingLine,
     this._baseForm,
     this._selectionBase,
     this.offset,
+    this.isDarkBackground,
   );
 
   @override
   void paint(Canvas canvas, Size size) {
     if (_currentDrawingLine != null) {
-      _currentDrawingLine!.drawCurrent(canvas, offset, size.width, size.height);
+      _currentDrawingLine!.drawCurrent(
+          canvas, offset, size.width, size.height, isDarkBackground);
     }
 
     if (_baseForm != null) {
-      _baseForm!.drawCurrent(canvas, offset, size.width, size.height);
+      _baseForm!.drawCurrent(
+          canvas, offset, size.width, size.height, isDarkBackground);
     }
 
     if (_selectionBase != null) {

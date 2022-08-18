@@ -49,7 +49,7 @@ class TopBarList extends StatelessWidget {
               style: TextStyle(
                   color: selectedMenu == menuToDisplay
                       ? Colors.blue
-                      : Colors.black,
+                      : Colors.white,
                   fontSize: 20)),
           selectedMenu == menuToDisplay
               ? Container(
@@ -69,18 +69,15 @@ class TopBar extends StatefulWidget {
   final List<PaintElement>? paintElements;
   final List<Forms> formItems;
   final Forms selectedForm;
-  final List<double> strokeWidthItems;
   final Offset offset;
   final Paint currentPaint;
   final List<Background> backgroundItems;
   final NoteBook noteBook;
   final CanvasState canvasState;
   final double currScale;
-  final Color selectedPaintColor;
   final SelectionModes currentSelectionMode;
   final Paint selectedPaint;
-  final ValueChanged<Color> onChangPaintColor;
-  final ValueChanged<double> onChangeStrokeWidth;
+  final bool darkMode;
   final ValueChanged<Forms> onChangeForm;
   final ValueChanged<Background> onChangeBackground;
   final VoidCallback onChangeEraseMode;
@@ -95,25 +92,23 @@ class TopBar extends StatefulWidget {
   final ValueChanged<String> onImagePaste;
   final ValueChanged<SelectionModes> onChangeSelectionMode;
   final ValueChanged<Paint> onChangePaint;
+  final VoidCallback onDarkModeSwitch;
 
   TopBar(
     this.scaffoldKey,
     this.paintElements,
     this.formItems,
     this.selectedForm,
-    this.strokeWidthItems,
     this.offset,
     this.currentPaint,
     this.backgroundItems,
     this.noteBook,
     this.canvasState,
     this.currScale,
-    this.selectedPaintColor,
     this.currentSelectionMode,
-    this.selectedPaint, {
+    this.selectedPaint,
+    this.darkMode, {
     Key? key,
-    required this.onChangPaintColor,
-    required this.onChangeStrokeWidth,
     required this.onChangeForm,
     required this.onChangeBackground,
     required this.onChangeEraseMode,
@@ -128,6 +123,7 @@ class TopBar extends StatefulWidget {
     required this.onImagePaste,
     required this.onChangeSelectionMode,
     required this.onChangePaint,
+    required this.onDarkModeSwitch,
   }) : super(key: key);
   @override
   _TopBarState createState() => _TopBarState();
@@ -162,7 +158,7 @@ class _TopBarState extends State<TopBar> {
       padding: const EdgeInsets.all(8),
       height: 100,
       width: double.infinity,
-      color: Colors.grey,
+      color: Theme.of(context).appBarTheme.backgroundColor,
       child: Column(mainAxisAlignment: MainAxisAlignment.start, children: [
         Row(children: [
           TopBarList(TopBarMenuList.start, _selectedMenu, (menu) {
@@ -202,18 +198,15 @@ class _TopBarState extends State<TopBar> {
                   _selectedMenu == TopBarMenuList.draw
                       ? DrawTopBar(
                           widget.canvasState,
-                          widget.selectedPaintColor,
                           widget.currentPaint,
-                          widget.strokeWidthItems,
                           widget.formItems,
                           widget.selectedForm,
                           widget.onChangeEraseMode,
-                          widget.onChangPaintColor,
-                          widget.onChangeStrokeWidth,
                           widget.onChangeForm,
                           widget.noteBook.paints,
                           widget.selectedPaint,
-                          widget.onChangePaint)
+                          widget.onChangePaint,
+                        )
                       : _selectedMenu == TopBarMenuList.insert
                           ? InsertTopBar(
                               onCreateTextElement: widget.onCreateTextElement,
@@ -227,6 +220,7 @@ class _TopBarState extends State<TopBar> {
                                   noteBook: widget.noteBook,
                                   currentSelectionMode:
                                       widget.currentSelectionMode,
+                                  darkMode: widget.darkMode,
                                   onChangeBackground: widget.onChangeBackground,
                                   onChangeSelectionMode:
                                       widget.onChangeSelectionMode,
@@ -234,7 +228,9 @@ class _TopBarState extends State<TopBar> {
                                   onSave: widget.onSave,
                                   onVerify: widget.onVerify,
                                   onZoomIn: widget.onZoomIn,
-                                  onZoomOut: widget.onZoomOut)
+                                  onZoomOut: widget.onZoomOut,
+                                  onDarkModeSwitch: widget.onDarkModeSwitch,
+                                )
                               : Container(),
                 ],
               ),

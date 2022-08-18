@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:skynote/helpers/paint_convert_by_dark_mode.dart';
 import 'package:skynote/models/base_paint_element.dart';
 import 'package:skynote/models/selections/lasso_selection.dart';
 import 'package:skynote/models/line_fragment.dart';
@@ -11,7 +12,13 @@ class Line extends PaintElement {
   Line(Paint paint) : super(paint);
   bool isLineRendered = false;
 
-  void drawCurrent(Canvas canvas, Offset offset, double width, double height) {
+  void drawCurrent(
+    Canvas canvas,
+    Offset offset,
+    double width,
+    double height,
+    bool isDarkMode,
+  ) {
     Path path = Path();
     Path? currentPath;
     isLineRendered = false;
@@ -23,13 +30,21 @@ class Line extends PaintElement {
       }
     }
     if (isLineRendered) {
-      canvas.drawPath(path, paint);
+      paintConvertByDark(isDarkMode, paint, () {
+        canvas.drawPath(path, paint);
+      });
     }
   }
 
   @override
-  Widget build(BuildContext context, Offset offset, double width, double height,
-      VoidCallback refreshFromElement, ValueChanged<String> onDeleteImage) {
+  Widget build(
+      BuildContext context,
+      Offset offset,
+      double width,
+      double height,
+      bool isDarkMode,
+      VoidCallback refreshFromElement,
+      ValueChanged<String> onDeleteImage) {
     Path path = Path();
     Path? currentPath;
     isLineRendered = false;
@@ -44,7 +59,7 @@ class Line extends PaintElement {
       path.close();
     }
     return CustomPaint(
-      painter: LinePainter(path, paint),
+      painter: LinePainter(path, paint, isDarkMode),
     );
   }
 
@@ -175,10 +190,13 @@ class Line extends PaintElement {
 class LinePainter extends CustomPainter {
   Path path;
   final Paint _paint;
-  LinePainter(this.path, this._paint);
+  final bool isDarkMode;
+  LinePainter(this.path, this._paint, this.isDarkMode);
   @override
   void paint(Canvas canvas, Size size) {
-    canvas.drawPath(path, _paint);
+    paintConvertByDark(isDarkMode, _paint, () {
+      canvas.drawPath(path, _paint);
+    });
   }
 
   @override

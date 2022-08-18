@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:skynote/helpers/intersections.dart';
+import 'package:skynote/helpers/paint_convert_by_dark_mode.dart';
 import 'package:skynote/models/base_paint_element.dart';
 import 'package:skynote/models/forms/form_base.dart';
 import 'package:skynote/models/line_eraser.dart';
@@ -22,23 +23,31 @@ class ArrowForm extends PaintElement with BaseForm {
       Offset offset,
       double width,
       double height,
+      bool isDarkMode,
       VoidCallback refreshFromElement,
       ValueChanged<String> onDeleteImage) {
     return CustomPaint(
-      painter: ArrowPainter(this, offset, width, height),
+      painter: ArrowPainter(this, offset, width, height, isDarkMode),
     );
   }
 
   @override
-  void drawCurrent(Canvas canvas, Offset offset, double width, double height) {
+  void drawCurrent(
+    Canvas canvas,
+    Offset offset,
+    double width,
+    double height,
+    bool isDarkMode,
+  ) {
     //TODO Check if line is in bounds
-
-    paint.strokeJoin = StrokeJoin.round;
-    Path path = Path();
-    path.moveTo(a1.x + offset.dx, a1.y + offset.dy);
-    path.lineTo(b2.x + offset.dx, b2.y + offset.dy);
-    path = ArrowPath.make(path: path);
-    canvas.drawPath(path, paint);
+    paintConvertByDark(isDarkMode, paint, () {
+      paint.strokeJoin = StrokeJoin.round;
+      Path path = Path();
+      path.moveTo(a1.x + offset.dx, a1.y + offset.dy);
+      path.lineTo(b2.x + offset.dx, b2.y + offset.dy);
+      path = ArrowPath.make(path: path);
+      canvas.drawPath(path, paint);
+    });
   }
 
   @override
@@ -130,15 +139,18 @@ class ArrowPainter extends CustomPainter {
   Offset offset;
   double width;
   double height;
-  ArrowPainter(this.arrow, this.offset, this.width, this.height);
+  bool isDarkMode;
+  ArrowPainter(
+      this.arrow, this.offset, this.width, this.height, this.isDarkMode);
   @override
   void paint(Canvas canvas, Size size) {
-    arrow.paint.strokeJoin = StrokeJoin.round;
-    Path path = Path();
-    path.moveTo(arrow.a1.x + offset.dx, arrow.a1.y + offset.dy);
-    path.lineTo(arrow.b2.x + offset.dx, arrow.b2.y + offset.dy);
-    path = ArrowPath.make(path: path);
-    canvas.drawPath(path, arrow.paint);
+    arrow.drawCurrent(canvas, offset, width, height, isDarkMode);
+    // arrow.paint.strokeJoin = StrokeJoin.round;
+    // Path path = Path();
+    // path.moveTo(arrow.a1.x + offset.dx, arrow.a1.y + offset.dy);
+    // path.lineTo(arrow.b2.x + offset.dx, arrow.b2.y + offset.dy);
+    // path = ArrowPath.make(path: path);
+    // canvas.drawPath(path, arrow.paint);
   }
 
   @override

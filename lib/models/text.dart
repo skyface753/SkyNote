@@ -7,17 +7,26 @@ import 'package:skynote/models/selections/selection_base.dart';
 import 'package:skynote/models/types.dart';
 import 'package:vector_math/vector_math_64.dart' as vm;
 
-double fontSize = 17;
+double fontSize = 10.5;
 
 class TextElement extends PaintElement {
   String text;
   vm.Vector2 pos;
   TextElement(this.text, this.pos, Paint paint) : super(paint);
 
-  Widget showText() {
+  Widget showText(
+    bool isDarkMode,
+  ) {
     return Text(
       text,
-      style: TextStyle(fontSize: fontSize, color: paint.color),
+      style: TextStyle(
+          fontSize: fontSize,
+          height: 0.95,
+          color: isDarkMode && paint.color == Colors.black
+              ? Colors.white
+              : !isDarkMode && paint.color == Colors.white
+                  ? Colors.black
+                  : paint.color),
     );
   }
 
@@ -27,6 +36,7 @@ class TextElement extends PaintElement {
       Offset offset,
       double width,
       double height,
+      bool isDarkMode,
       VoidCallback refreshFromElement,
       ValueChanged<String> onDeleteImage) {
     return (Positioned(
@@ -74,11 +84,11 @@ class TextElement extends PaintElement {
           },
           onPanEnd: (DragEndDetails details) {
             // Position to a mod 20
-            pos.y = (pos.y / 20).round() * 20 + 3;
+            pos.y = (pos.y / 10).round() * 10 + 2;
             // pos.x = pos.x %
             refreshFromElement();
           },
-          child: showText()),
+          child: showText(isDarkMode)),
     ));
   }
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:skynote/helpers/intersections.dart';
+import 'package:skynote/helpers/paint_convert_by_dark_mode.dart';
 import 'package:skynote/models/base_paint_element.dart';
 import 'package:skynote/models/forms/form_base.dart';
 import 'package:skynote/models/selections/lasso_selection.dart';
@@ -21,25 +22,34 @@ class TriangleForm extends PaintElement with BaseForm {
       Offset offset,
       double width,
       double height,
+      bool isDarkMode,
       VoidCallback refreshFromElement,
       ValueChanged<String> onDeleteImage) {
     return CustomPaint(
-      painter: TrianglePainter(this, offset, width, height),
+      painter: TrianglePainter(this, offset, width, height, isDarkMode),
     );
   }
 
   @override
-  void drawCurrent(Canvas canvas, Offset offset, double width, double height) {
+  void drawCurrent(
+    Canvas canvas,
+    Offset offset,
+    double width,
+    double height,
+    bool isDarkMode,
+  ) {
     //TODO Check if line is in bounds
     double a1Tob2DistanceX = b2.x - a1.x;
-    canvas.drawPath(
-        Path()
-          ..moveTo(a1.x + offset.dx, a1.y + offset.dy)
-          ..lineTo(-a1Tob2DistanceX + a1.x + offset.dx, b2.y + offset.dy)
-          ..lineTo(a1Tob2DistanceX + a1.x + offset.dx, b2.y + offset.dy)
-          ..lineTo(a1.x + offset.dx, a1.y + offset.dy)
-          ..close(),
-        paint);
+    paintConvertByDark(isDarkMode, paint, () {
+      canvas.drawPath(
+          Path()
+            ..moveTo(a1.x + offset.dx, a1.y + offset.dy)
+            ..lineTo(-a1Tob2DistanceX + a1.x + offset.dx, b2.y + offset.dy)
+            ..lineTo(a1Tob2DistanceX + a1.x + offset.dx, b2.y + offset.dy)
+            ..lineTo(a1.x + offset.dx, a1.y + offset.dy)
+            ..close(),
+          paint);
+    });
   }
 
   @override
@@ -145,10 +155,12 @@ class TrianglePainter extends CustomPainter {
   Offset offset;
   double width;
   double height;
-  TrianglePainter(this.triangle, this.offset, this.width, this.height);
+  bool isDarkMode;
+  TrianglePainter(
+      this.triangle, this.offset, this.width, this.height, this.isDarkMode);
   @override
   void paint(Canvas canvas, Size size) {
-    triangle.drawCurrent(canvas, offset, width, height);
+    triangle.drawCurrent(canvas, offset, width, height, isDarkMode);
   }
 
   @override

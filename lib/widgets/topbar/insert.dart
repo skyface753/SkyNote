@@ -21,7 +21,6 @@ class InsertTopBar extends StatelessWidget {
         // Create a TextField
         IconButton(
           icon: const Icon(Icons.text_fields),
-          color: Colors.black,
           onPressed: () {
             showDialog(
               context: context,

@@ -44,6 +44,7 @@ class NoteBook {
   int selectedPencilIndex = 0;
   int? selectedSectionIndex;
   int? selectedNoteIndex;
+  bool darkMode = false;
   // Background defaultBackground = Background.lines;
 
   NoteBook(this.name);
@@ -70,6 +71,7 @@ class NoteBook {
       'selectedNoteIndex': selectedNoteIndex,
       'paints': paintConverter.paintsListToJson(paints),
       'selectedPencilIndex': selectedPencilIndex,
+      'darkMode': darkMode,
       // 'defaultBackground': backgroundToJson(defaultBackground),
     };
   }
@@ -82,7 +84,8 @@ class NoteBook {
         selectedSectionIndex = json['selectedSectionIndex'],
         selectedNoteIndex = json['selectedNoteIndex'],
         paints = paintConverter.paintsListFromJson(json['paints']),
-        selectedPencilIndex = json['selectedPencilIndex'] ?? 0;
+        selectedPencilIndex = json['selectedPencilIndex'] ?? 0,
+        darkMode = json['darkMode'] ?? false;
 
   @override
   toString() {
@@ -94,18 +97,16 @@ class NoteBook {
   }
 }
 
-enum Background { white, lines, checkered, black }
+enum Background { none, lines, checkered }
 
 Background backgroundFromJson(String json) {
   switch (json) {
-    case 'white':
-      return Background.white;
+    case 'none':
+      return Background.none;
     case 'lines':
       return Background.lines;
     case 'checkered':
       return Background.checkered;
-    case 'black':
-      return Background.black;
     default:
       throw Exception('Unknown background: $json');
   }
@@ -113,14 +114,12 @@ Background backgroundFromJson(String json) {
 
 String backgroundToJson(Background background) {
   switch (background) {
-    case Background.white:
-      return 'white';
+    case Background.none:
+      return 'none';
     case Background.lines:
       return 'lines';
     case Background.checkered:
       return 'checkered';
-    case Background.black:
-      return 'black';
     default:
       throw Exception('Unknown background: $background');
   }

@@ -24,12 +24,15 @@ abstract class PaintElement {
           ..strokeCap = currpaint.strokeCap;
 
   Widget? build(
-      BuildContext context,
-      Offset offset,
-      double width,
-      double height,
-      VoidCallback refreshFromElement,
-      ValueChanged<String> onDeleteImage);
+    BuildContext context,
+    Offset offset,
+    double width,
+    double height,
+    bool isDarkMode,
+    VoidCallback refreshFromElement,
+    ValueChanged<String> onDeleteImage,
+  );
+
   bool intersectAsSegments(LineEraser lineEraser);
   bool checkSelection(SelectionBase selection);
   Map<String, dynamic> toJson();
@@ -80,7 +83,8 @@ abstract class PaintElement {
     bool shouldRender,
     BuildContext context,
     List<PaintElement> paintElements,
-    Offset offset, {
+    Offset offset,
+    bool isDarkMode, {
     required VoidCallback refreshFromElement,
     required ValueChanged<String> onDeleteImage,
   }) {
@@ -91,8 +95,8 @@ abstract class PaintElement {
       return widgets;
     }
     for (PaintElement paintElement in paintElements) {
-      Widget? widget = paintElement.build(
-          context, offset, width, height, refreshFromElement, onDeleteImage);
+      Widget? widget = paintElement.build(context, offset, width, height,
+          isDarkMode, refreshFromElement, onDeleteImage);
       if (widget != null) {
         widgets.add(widget);
       }

@@ -44,6 +44,7 @@ class PaintImage extends PaintElement {
       Offset offset,
       double screenWidth,
       double screenHeight,
+      bool isDarkMode,
       VoidCallback refreshFromElement,
       ValueChanged<String> onDeleteImage) {
     if (_imageData == null) {

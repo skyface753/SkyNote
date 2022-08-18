@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:skynote/helpers/paint_convert_by_dark_mode.dart';
 import 'package:skynote/models/base_paint_element.dart';
 import 'package:skynote/models/forms/form_base.dart';
 import 'package:skynote/models/selections/lasso_selection.dart';
@@ -29,10 +30,18 @@ class LineForm extends PaintElement with BaseForm {
   }
 
   @override
-  void drawCurrent(Canvas canvas, Offset offset, double width, double height) {
+  void drawCurrent(
+    Canvas canvas,
+    Offset offset,
+    double width,
+    double height,
+    bool isDarkMode,
+  ) {
     // Todo Check if line is in bounds
-    canvas.drawLine(Offset(a.x + offset.dx, a.y + offset.dy),
-        Offset(b.x + offset.dx, b.y + offset.dy), paint);
+    paintConvertByDark(isDarkMode, paint, () {
+      canvas.drawLine(Offset(a.x + offset.dx, a.y + offset.dy),
+          Offset(b.x + offset.dx, b.y + offset.dy), paint);
+    });
   }
 
   @override
@@ -41,11 +50,12 @@ class LineForm extends PaintElement with BaseForm {
       Offset offset,
       double width,
       double height,
+      bool isDarkMode,
       VoidCallback refreshFromElement,
       ValueChanged<String> onDeleteImage) {
     //TODO Check if line is in bounds
     return CustomPaint(
-      painter: LineFormPainter(this, offset, width, height),
+      painter: LineFormPainter(this, offset, width, height, isDarkMode),
     );
   }
 
@@ -182,14 +192,17 @@ class LineFormPainter extends CustomPainter {
   Offset offset;
   double width;
   double height;
-  LineFormPainter(this.lineForm, this.offset, this.width, this.height);
+  bool isDarkMode;
+  LineFormPainter(
+      this.lineForm, this.offset, this.width, this.height, this.isDarkMode);
   @override
   void paint(Canvas canvas, Size size) {
+    lineForm.drawCurrent(canvas, offset, width, height, isDarkMode);
     //TODO Check if line is in bounds (called in build)
-    canvas.drawLine(
-        Offset(lineForm.a.x + offset.dx, lineForm.a.y + offset.dy),
-        Offset(lineForm.b.x + offset.dx, lineForm.b.y + offset.dy),
-        lineForm.paint);
+    // canvas.drawLine(
+    //     Offset(lineForm.a.x + offset.dx, lineForm.a.y + offset.dy),
+    //     Offset(lineForm.b.x + offset.dx, lineForm.b.y + offset.dy),
+    //     lineForm.paint);
   }
 
   @override

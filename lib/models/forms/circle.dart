@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:skynote/helpers/paint_convert_by_dark_mode.dart';
 import 'package:skynote/models/base_paint_element.dart';
 import 'package:skynote/models/forms/form_base.dart';
 import 'package:skynote/models/selections/lasso_selection.dart';
@@ -20,18 +21,27 @@ class CircleForm extends PaintElement with BaseForm {
       Offset offset,
       double width,
       double height,
+      bool isDarkMode,
       VoidCallback refreshFromElement,
       ValueChanged<String> onDeleteImage) {
     return CustomPaint(
-      painter: CircleFormPainter(this, offset, width, height),
+      painter: CircleFormPainter(this, offset, width, height, isDarkMode),
     );
   }
 
   @override
-  void drawCurrent(Canvas canvas, Offset offset, double width, double height) {
+  void drawCurrent(
+    Canvas canvas,
+    Offset offset,
+    double width,
+    double height,
+    bool isDarkMode,
+  ) {
     //TODO Check if line is in bounds
-    canvas.drawCircle(
-        Offset(center.x + offset.dx, center.y + offset.dy), radius, paint);
+    paintConvertByDark(isDarkMode, paint, () {
+      canvas.drawCircle(
+          Offset(center.x + offset.dx, center.y + offset.dy), radius, paint);
+    });
   }
 
   @override
@@ -116,13 +126,16 @@ class CircleFormPainter extends CustomPainter {
   Offset offset;
   double width;
   double height;
-  CircleFormPainter(this.circleForm, this.offset, this.width, this.height);
+  bool isDarkMode;
+  CircleFormPainter(
+      this.circleForm, this.offset, this.width, this.height, this.isDarkMode);
   @override
   void paint(Canvas canvas, Size size) {
-    vm.Vector2 center = vm.Vector2(
-        circleForm.center.x + offset.dx, circleForm.center.y + offset.dy);
-    canvas.drawCircle(
-        Offset(center.x, center.y), circleForm.radius, circleForm.paint);
+    circleForm.drawCurrent(canvas, offset, width, height, isDarkMode);
+    // vm.Vector2 center = vm.Vector2(
+    //     circleForm.center.x + offset.dx, circleForm.center.y + offset.dy);
+    // canvas.drawCircle(
+    //     Offset(center.x, center.y), circleForm.radius, circleForm.paint);
   }
 
   @override

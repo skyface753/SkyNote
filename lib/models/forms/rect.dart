@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:skynote/helpers/intersections.dart';
+import 'package:skynote/helpers/paint_convert_by_dark_mode.dart';
 import 'package:skynote/models/base_paint_element.dart';
 import 'package:skynote/models/forms/form_base.dart';
 import 'package:skynote/models/line_eraser.dart';
@@ -21,20 +22,24 @@ class RectForm extends PaintElement with BaseForm {
       Offset offset,
       double width,
       double height,
+      bool isDarkMode,
       VoidCallback refreshFromElement,
       ValueChanged<String> onDeleteImage) {
     return CustomPaint(
-      painter: RectFormPainter(this, offset, width, height),
+      painter: RectFormPainter(this, offset, width, height, isDarkMode),
     );
   }
 
   @override
-  void drawCurrent(Canvas canvas, Offset offset, double width, double height) {
+  void drawCurrent(Canvas canvas, Offset offset, double width, double height,
+      bool isDarkMode) {
     //TODO Check if line is in bounds
-    canvas.drawRect(
-        Rect.fromLTRB(a1.x + offset.dx, a1.y + offset.dy, b2.x + offset.dx,
-            b2.y + offset.dy),
-        paint);
+    paintConvertByDark(isDarkMode, paint, () {
+      canvas.drawRect(
+          Rect.fromLTRB(a1.x + offset.dx, a1.y + offset.dy, b2.x + offset.dx,
+              b2.y + offset.dy),
+          paint);
+    });
   }
 
   @override
@@ -135,14 +140,17 @@ class RectFormPainter extends CustomPainter {
   Offset offset;
   double width;
   double height;
-  RectFormPainter(this.rectForm, this.offset, this.width, this.height);
+  bool isDarkMode;
+  RectFormPainter(
+      this.rectForm, this.offset, this.width, this.height, this.isDarkMode);
   @override
   void paint(Canvas canvas, Size size) {
-    vm.Vector2 a1 =
-        vm.Vector2(rectForm.a1.x + offset.dx, rectForm.a1.y + offset.dy);
-    vm.Vector2 b2 =
-        vm.Vector2(rectForm.b2.x + offset.dx, rectForm.b2.y + offset.dy);
-    canvas.drawRect(Rect.fromLTRB(a1.x, a1.y, b2.x, b2.y), rectForm.paint);
+    rectForm.drawCurrent(canvas, offset, width, height, isDarkMode);
+    // vm.Vector2 a1 =
+    //     vm.Vector2(rectForm.a1.x + offset.dx, rectForm.a1.y + offset.dy);
+    // vm.Vector2 b2 =
+    //     vm.Vector2(rectForm.b2.x + offset.dx, rectForm.b2.y + offset.dy);
+    // canvas.drawRect(Rect.fromLTRB(a1.x, a1.y, b2.x, b2.y), rectForm.paint);
   }
 
   @override

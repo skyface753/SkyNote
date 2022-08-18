@@ -10,6 +10,7 @@ class StartTopBar extends StatelessWidget {
   final VoidCallback onGoToHome;
   final NoteBook noteBook;
   final SelectionModes currentSelectionMode;
+  final bool darkMode;
   final ValueChanged<Background> onChangeBackground;
   final ValueChanged<SelectionModes> onChangeSelectionMode;
   final VoidCallback onImagePicker;
@@ -17,23 +18,26 @@ class StartTopBar extends StatelessWidget {
   final VoidCallback onVerify;
   final VoidCallback onZoomIn;
   final VoidCallback onZoomOut;
+  final VoidCallback onDarkModeSwitch;
 
-  const StartTopBar({
-    Key? key,
-    required this.canvasState,
-    required this.paintElements,
-    required this.backgroundItems,
-    required this.onGoToHome,
-    required this.noteBook,
-    required this.currentSelectionMode,
-    required this.onChangeBackground,
-    required this.onChangeSelectionMode,
-    required this.onImagePicker,
-    required this.onSave,
-    required this.onVerify,
-    required this.onZoomIn,
-    required this.onZoomOut,
-  }) : super(key: key);
+  const StartTopBar(
+      {Key? key,
+      required this.canvasState,
+      required this.paintElements,
+      required this.backgroundItems,
+      required this.onGoToHome,
+      required this.noteBook,
+      required this.currentSelectionMode,
+      required this.darkMode,
+      required this.onChangeBackground,
+      required this.onChangeSelectionMode,
+      required this.onImagePicker,
+      required this.onSave,
+      required this.onVerify,
+      required this.onZoomIn,
+      required this.onZoomOut,
+      required this.onDarkModeSwitch})
+      : super(key: key);
   @override
   Widget build(BuildContext context) {
     return Row(
@@ -41,7 +45,7 @@ class StartTopBar extends StatelessWidget {
       children: [
         IconButton(
           icon: const Icon(Icons.logout), // Not sure if this is the right icon
-          color: Colors.black,
+          // color: Colors.black,
           onPressed: () async {
             //TODO Show loading dialog while saving
             onGoToHome();
@@ -49,7 +53,7 @@ class StartTopBar extends StatelessWidget {
         ),
         IconButton(
           icon: const Icon(Icons.arrow_back),
-          color: Colors.black,
+          // color: Colors.black,
           onPressed: () {
             //TODO Void callback
             if (paintElements!.isNotEmpty) {
@@ -72,10 +76,17 @@ class StartTopBar extends StatelessWidget {
                     noteBook.selectedNoteIndex != null
                 ? noteBook.sections[noteBook.selectedSectionIndex!]
                     .notes[noteBook.selectedNoteIndex!].background
-                : Background.white,
+                : Background.none,
             onChanged: (Background? newValue) {
               onChangeBackground(newValue!);
             }), // Background
+        IconButton(
+          onPressed: () {
+            onDarkModeSwitch();
+          },
+          icon: Icon(Icons.dark_mode),
+          color: darkMode ? Colors.yellow : Colors.white,
+        ),
 // Selection Mode
         DropdownButton(
             items: [
@@ -110,7 +121,7 @@ class StartTopBar extends StatelessWidget {
         //Save Button
         IconButton(
           icon: const Icon(Icons.save),
-          color: Colors.black,
+          // color: Colors.black,
           onPressed: () {
             onSave();
             // saveToAppwrite;
@@ -119,7 +130,7 @@ class StartTopBar extends StatelessWidget {
         //Verify Button
         IconButton(
           icon: const Icon(Icons.verified_user),
-          color: Colors.black,
+          // color: Colors.black,
           onPressed: () {
             onVerify();
             // verifyNotebook;
@@ -129,19 +140,50 @@ class StartTopBar extends StatelessWidget {
         // Zoom Button
         IconButton(
           icon: const Icon(Icons.zoom_in),
-          color: Colors.black,
+          // color: Colors.black,
           onPressed: () {
             onZoomIn();
           },
         ),
         IconButton(
           icon: const Icon(Icons.zoom_out),
-          color: Colors.black,
+          // color: Colors.black,
           onPressed: () {
             onZoomOut();
           },
         ),
       ],
     );
+  }
+}
+
+class BackgroundPreview extends CustomPainter {
+  Background background;
+  BackgroundPreview(this.background);
+  @override
+  void paint(Canvas canvas, Size size) {
+    Paint backgroundPaint = Paint()..color = Colors.white.withOpacity(1);
+    if (background == Background.none) {
+      return;
+    } else if (background == Background.checkered) {
+      for (int i = 0; i < size.width; i += 10) {
+        canvas.drawLine(Offset(i.toDouble(), 0),
+            Offset(i.toDouble(), size.height), backgroundPaint);
+      }
+      for (int i = 0; i < size.height; i += 10) {
+        canvas.drawLine(Offset(0, i.toDouble()),
+            Offset(size.width, i.toDouble()), backgroundPaint);
+      }
+    } else if (background == Background.lines) {
+      for (int i = 0; i < size.height; i += 10) {
+        canvas.drawLine(Offset(0, i.toDouble()),
+            Offset(size.width, i.toDouble()), backgroundPaint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(BackgroundPreview oldDelegate) {
+    return false;
   }
 }
