@@ -8,6 +8,7 @@ import 'package:skynote/models/types.dart';
 import 'package:vector_math/vector_math_64.dart' as vm;
 
 double fontSize = 10.5;
+double paragraphHeight = 0.95;
 
 class TextElement extends PaintElement {
   String text;
@@ -160,7 +161,9 @@ class TextElement extends PaintElement {
 
 double _textWidth(String text) {
   final TextPainter textPainter = TextPainter(
-      text: TextSpan(text: text, style: TextStyle(fontSize: fontSize)),
+      text: TextSpan(
+          text: text,
+          style: TextStyle(fontSize: fontSize, height: paragraphHeight)),
       maxLines: 1,
       textDirection: TextDirection.ltr)
     ..layout(minWidth: 0, maxWidth: double.infinity);
@@ -169,8 +172,10 @@ double _textWidth(String text) {
 
 double _textHeight(String text) {
   final TextPainter textPainter = TextPainter(
-      text: TextSpan(text: text, style: TextStyle(fontSize: fontSize)),
-      maxLines: 1,
+      text: TextSpan(
+          text: text,
+          style: TextStyle(fontSize: fontSize, height: paragraphHeight)),
+      // maxLines: 1,
       textDirection: TextDirection.ltr)
     ..layout(minWidth: 0, maxWidth: double.infinity);
   return textPainter.height;

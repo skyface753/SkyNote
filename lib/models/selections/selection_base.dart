@@ -11,11 +11,8 @@ abstract class SelectionBase {
   bool checkCollision(vm.Vector2 otherPoint);
   void drawCurrent(Canvas canvas, Offset offset, double width, double height);
 
-  static Widget buildSelection(
-    List<PaintElement> paintElements,
-    Offset offset,
-    VoidCallback refreshFromElement,
-  ) {
+  static Widget buildSelection(List<PaintElement> paintElements, Offset offset,
+      VoidCallback refreshFromElement, double currScale) {
     Offset? startMoveOffset;
     double leftest, rightest, topest, bottomest;
     bottomest = paintElements.first.getBottomY();
@@ -52,7 +49,8 @@ abstract class SelectionBase {
               if (startMoveOffset == null) {
                 return;
               }
-              var newOffset = details.globalPosition - startMoveOffset!;
+              var newOffset =
+                  (details.globalPosition - startMoveOffset!) / currScale;
               for (int i = 0; i < paintElements.length; i++) {
                 var element = paintElements[i];
                 element.moveByOffset(newOffset);

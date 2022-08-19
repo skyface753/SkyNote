@@ -36,9 +36,11 @@ class LassoSelection extends SelectionBase {
       var lastPoint = lassoPoints[i - 1];
       if (_trianglePointCollsion(
           startPoint, lastPoint, currentPoint, otherPoint)) {
+        print("Point in triangle");
         return true;
       }
     }
+    print("Point not in triangle");
     return false;
   }
 
@@ -55,13 +57,14 @@ class LassoSelection extends SelectionBase {
           Offset(currentPoint.x + offset.dx, currentPoint.y + offset.dy),
           Paint()
             ..color = Colors.black.withOpacity(0.5)
-            ..strokeWidth = 4);
+            ..strokeWidth = 1
+            ..strokeCap = StrokeCap.round);
     }
     canvas.drawLine(
         Offset(startPoint.x + offset.dx, startPoint.y + offset.dy),
         Offset(lassoPoints.last.x + offset.dx, lassoPoints.last.y + offset.dy),
         Paint()
           ..color = Colors.red
-          ..strokeWidth = 2);
+          ..strokeWidth = 1);
   }
 }

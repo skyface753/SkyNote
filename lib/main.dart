@@ -842,10 +842,12 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
     if (useMobileLayout) {
       // print("Mobile Layout");
     }
-    if (_noteBook.selectedSectionIndex != null &&
-        _noteBook.selectedNoteIndex != null) {
-      currentBackground = _noteBook.sections[_noteBook.selectedSectionIndex!]
-          .notes[_noteBook.selectedNoteIndex!].background;
+    if (_noteBook != null) {
+      if (_noteBook.selectedSectionIndex != null &&
+          _noteBook.selectedNoteIndex != null) {
+        currentBackground = _noteBook.sections[_noteBook.selectedSectionIndex!]
+            .notes[_noteBook.selectedNoteIndex!].background;
+      }
     }
 
     return Scaffold(
@@ -996,6 +998,13 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                               onChangePaint: (newPaint) {
                                 _currentPaint = newPaint;
                                 canvasState = CanvasState.draw;
+                                if (_selectedElements != null) {
+                                  for (var element in _selectedElements!) {
+                                    element.setColor(newPaint.color);
+                                    element
+                                        .setStrokeWidth(newPaint.strokeWidth);
+                                  }
+                                }
                                 setState(() {});
                                 // getPencilFromNotebook();
                               },
@@ -1090,7 +1099,37 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                                                         saveToAppwrite();
                                                       });
                                                     }),
+                                                    _currentMousePosition !=
+                                                            null
+                                                        ? Positioned(
+                                                            left:
+                                                                _currentMousePosition!
+                                                                    .dx,
+                                                            top: _currentMousePosition!
+                                                                .dy,
+                                                            child: Text(
+                                                                _currentMousePosition!
+                                                                        .dx
+                                                                        .round()
+                                                                        .toString() +
+                                                                    "/" +
+                                                                    _currentMousePosition!
+                                                                        .dy
+                                                                        .round()
+                                                                        .toString(),
+                                                                style: TextStyle(
+                                                                    color: Colors
+                                                                        .black,
+                                                                    fontSize:
+                                                                        7)))
+                                                        : Container(),
                                                     Listener(
+                                                      onPointerHover: (event) {
+                                                        print("Hover");
+                                                        _currentMousePosition =
+                                                            event.localPosition;
+                                                        setState(() {});
+                                                      },
                                                       onPointerDown: (event) {
                                                         _pointerMap[
                                                                 event.pointer] =
@@ -1498,7 +1537,7 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                                                                 _selectedElements!,
                                                                 offset, (() {
                                                             setState(() {});
-                                                          }))
+                                                          }), currScale)
                                                         : Container(),
                                                   ]),
                                                 ))))))
@@ -1506,6 +1545,8 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                         ),
                       )));
   }
+
+  Offset? _currentMousePosition;
 }
 
 class BackgroundPainter extends CustomPainter {

@@ -31,14 +31,14 @@ class _RegisterPageState extends State<RegisterPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      // backgroundColor: Colors.white,
       resizeToAvoidBottomInset: false,
       body: Stack(
         children: [
-          Align(
-            alignment: Alignment.topRight,
-            child: Image.asset('assets/images/background.png'),
-          ),
+          // Align(
+          //   alignment: Alignment.topRight,
+          //   child: Image.asset('assets/images/background.png'),
+          // ),
           Padding(
             padding: EdgeInsets.only(
                 top: 60.0, bottom: 20.0, left: 20.0, right: 20.0),

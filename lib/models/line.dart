@@ -6,6 +6,7 @@ import 'package:skynote/models/line_fragment.dart';
 import 'package:skynote/models/point.dart';
 import 'package:skynote/models/selections/selection_base.dart';
 import 'package:skynote/models/types.dart';
+import 'package:vector_math/vector_math_64.dart' as vm;
 
 class Line extends PaintElement {
   List<LineFragment> fragments = [];
@@ -66,15 +67,29 @@ class Line extends PaintElement {
   @override
   bool checkSelection(SelectionBase selection) {
     if (!isLineRendered) {
+      print("Line not rendered");
       return false;
     }
-    bool allIn = true;
+    print("Check in Line");
+    // bool allIn = true;
+    // vm.Vector2 a1 = vm.Vector2(getLeftX(), getTopY()); // top left
+    // vm.Vector2 a2 = vm.Vector2(getRightX(), getTopY()); // top right
+    // vm.Vector2 b1 = vm.Vector2(getLeftX(), getBottomY()); // bottom left
+    // vm.Vector2 b2 = vm.Vector2(getRightX(), getBottomY()); // bottom right
+    // if (selection.checkCollision(a1) &&
+    //     selection.checkCollision(a2) &&
+    //     selection.checkCollision(b1) &&
+    //     selection.checkCollision(b2)) {
+    //   return true;
+    // }
+    // return false;
     for (LineFragment fragment in fragments) {
-      if (!fragment.checkSelection(selection)) {
-        allIn = false;
+      if (fragment.checkSelection(selection)) {
+        // allIn = false;
+        return true;
       }
     }
-    return allIn;
+    return false;
   }
 
   @override

@@ -39,6 +39,7 @@ class LineFragment {
 
   bool checkSelection(SelectionBase selection) {
     if (!isRenderd) {
+      print("LineFragment: a and b are not in the display");
       return false;
     }
     if (selection.checkCollision(a) && selection.checkCollision(b)) {
