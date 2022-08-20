@@ -17,6 +17,8 @@ String _formsToString(Forms form) {
       return 'triangle';
     case Forms.arrow:
       return 'arrow';
+    case Forms.arrowDouble:
+      return 'arrowDouble';
   }
 }
 

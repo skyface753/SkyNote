@@ -10,4 +10,5 @@ enum PaintElementTypes {
   circleForm,
   triangleForm,
   arrowForm,
+  arrowDoubleForm
 }

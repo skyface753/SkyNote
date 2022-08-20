@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:skynote/models/forms/arrow.dart';
+import 'package:skynote/models/forms/arrow_double.dart';
 import 'package:skynote/models/forms/circle.dart';
 import 'package:skynote/models/forms/rect.dart';
 import 'package:skynote/models/forms/triangle.dart';
@@ -73,6 +74,8 @@ abstract class PaintElement {
         return TriangleForm.fromJson(e);
       } else if (e['type'] == PaintElementTypes.arrowForm.index) {
         return ArrowForm.fromJson(e);
+      } else if (e['type'] == PaintElementTypes.arrowDoubleForm.index) {
+        return ArrowDoubleForm.fromJson(e);
       } else {
         throw Exception('Unknown type: ${e['type']}');
       }

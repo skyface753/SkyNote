@@ -324,6 +324,13 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "0.6.4"
+  learning_digital_ink_recognition:
+    dependency: "direct main"
+    description:
+      name: learning_digital_ink_recognition
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "0.0.2"
   lints:
     dependency: transitive
     description:

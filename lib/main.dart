@@ -17,6 +17,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:skynote/appwrite.dart';
 import 'package:skynote/models/base_paint_element.dart';
 import 'package:skynote/models/forms/arrow.dart';
+import 'package:skynote/models/forms/arrow_double.dart';
 import 'package:skynote/models/forms/circle.dart';
 import 'package:skynote/models/forms/form_base.dart';
 import 'package:skynote/models/forms/rect.dart';
@@ -93,7 +94,7 @@ class ThemeClass {
 
 enum CanvasState { pan, draw, erase, zoom, form, select }
 
-enum Forms { none, line, rectangle, circle, triangle, arrow }
+enum Forms { none, line, rectangle, circle, triangle, arrow, arrowDouble }
 
 enum SelectionModes { rect, lasso }
 
@@ -420,7 +421,8 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
     Forms.rectangle,
     Forms.circle,
     Forms.triangle,
-    Forms.arrow
+    Forms.arrow,
+    Forms.arrowDouble
   ];
   Forms selectedForm = Forms.none;
   // FOR Stroke WIDTH PICKER
@@ -738,6 +740,11 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
       case Forms.arrow:
         {
           _currentForm = ArrowForm(currPoint, currPoint, _currentPaint);
+          break;
+        }
+      case Forms.arrowDouble:
+        {
+          _currentForm = ArrowDoubleForm(currPoint, currPoint, _currentPaint);
           break;
         }
       case Forms.none:

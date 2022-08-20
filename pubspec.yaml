@@ -53,6 +53,7 @@ dependencies:
   arrow_path: ^3.0.0
   dismissible_page: ^0.7.3
   flutter_dialogs: ^3.0.0
+  learning_digital_ink_recognition: ^0.0.2
   # modal_progress_hud_nsn: ^0.3.0
 
 dev_dependencies:
