@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:skynote/helpers/paint_convert_by_dark_mode.dart';
 import 'package:skynote/models/selections/selection_base.dart';
 import 'package:vector_math/vector_math_64.dart' as vm;
 
@@ -23,16 +24,20 @@ class RectSelection extends SelectionBase {
   }
 
   @override
-  void drawCurrent(Canvas canvas, Offset offset, double width, double height) {
+  void drawCurrent(Canvas canvas, Offset offset, double width, double height,
+      bool isDarkMode) {
     if (endPoint == null) {
       return;
     }
-    canvas.drawRect(
-        Rect.fromLTRB(startPoint.x + offset.dx, startPoint.y + offset.dy,
-            endPoint!.x + offset.dx, endPoint!.y + offset.dy),
-        Paint()
-          ..color = Colors.black.withOpacity(0.5)
-          ..strokeWidth = 4);
+    Paint paint = Paint()
+      ..color = Colors.black.withOpacity(0.5)
+      ..strokeWidth = 4;
+    paintConvertByDark(isDarkMode, paint, () {
+      canvas.drawRect(
+          Rect.fromLTRB(startPoint.x + offset.dx, startPoint.y + offset.dy,
+              endPoint!.x + offset.dx, endPoint!.y + offset.dy),
+          paint);
+    });
   }
 
   @override

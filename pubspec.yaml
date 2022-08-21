@@ -53,8 +53,7 @@ dependencies:
   arrow_path: ^3.0.0
   dismissible_page: ^0.7.3
   flutter_dialogs: ^3.0.0
-  learning_digital_ink_recognition: ^0.0.2
-  # modal_progress_hud_nsn: ^0.3.0
+  ar_flutter_plugin: ^0.6.2 #TEST
 
 dev_dependencies:
   flutter_test:
@@ -78,6 +77,8 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/
+    - assets/sj/
+    # - assets/sj/
   # To add assets to your application, add an assets section, like this:
   # assets:
   #   - images/a_dot_burr.jpeg

@@ -155,10 +155,18 @@ class _TopBarState extends State<TopBar> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(8),
-      height: 100,
+      padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+      height: 95,
       width: double.infinity,
-      color: Theme.of(context).appBarTheme.backgroundColor,
+      // color: Theme.of(context).appBarTheme.backgroundColor,
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(
+            color: Colors.grey,
+            width: 1,
+          ),
+        ),
+      ),
       child: Column(mainAxisAlignment: MainAxisAlignment.start, children: [
         Row(children: [
           TopBarList(TopBarMenuList.start, _selectedMenu, (menu) {

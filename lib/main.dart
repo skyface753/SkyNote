@@ -68,7 +68,6 @@ class MyApp extends StatelessWidget {
           '/login': (context) => const LoginScreen(),
           '/register': (context) => RegisterPage(),
           '/online/images': (context) => const AllOnlineImagesScreen(),
-
           // '/notebook': (context) => InfiniteCanvasPage(),
         },
         debugShowCheckedModeBanner: false,
@@ -85,7 +84,7 @@ class ThemeClass {
       ));
 
   static ThemeData darkTheme = ThemeData(
-      scaffoldBackgroundColor: Colors.black,
+      // scaffoldBackgroundColor: Color(0xFF121212),
       colorScheme: ColorScheme.dark(),
       appBarTheme: AppBarTheme(
         backgroundColor: Colors.black,
@@ -1659,7 +1658,8 @@ class CanvasCustomPainter extends CustomPainter {
     }
 
     if (_selectionBase != null) {
-      _selectionBase!.drawCurrent(canvas, offset, size.width, size.height);
+      _selectionBase!.drawCurrent(
+          canvas, offset, size.width, size.height, isDarkBackground);
     }
   }
 

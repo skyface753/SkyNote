@@ -9,7 +9,8 @@ abstract class SelectionBase {
 
   void setPoint(vm.Vector2 point);
   bool checkCollision(vm.Vector2 otherPoint);
-  void drawCurrent(Canvas canvas, Offset offset, double width, double height);
+  void drawCurrent(Canvas canvas, Offset offset, double width, double height,
+      bool isDarkMode);
 
   static Widget buildSelection(List<PaintElement> paintElements, Offset offset,
       VoidCallback refreshFromElement, double currScale) {

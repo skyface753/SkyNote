@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:skynote/helpers/paint_convert_by_dark_mode.dart';
 import 'package:skynote/models/selections/selection_base.dart';
 import 'package:vector_math/vector_math_64.dart' as vm;
 
@@ -45,21 +46,26 @@ class LassoSelection extends SelectionBase {
   }
 
   @override
-  void drawCurrent(Canvas canvas, Offset offset, double width, double height) {
+  void drawCurrent(Canvas canvas, Offset offset, double width, double height,
+      bool isDarkMode) {
     if (lassoPoints.isEmpty) {
       return;
     }
     for (int i = 1; i < lassoPoints.length; i++) {
       var currentPoint = lassoPoints[i];
       var lastPoint = lassoPoints[i - 1];
+      Paint paint = Paint()
+        ..color = isDarkMode
+            ? Colors.white.withOpacity(0.5)
+            : Colors.black.withOpacity(0.5)
+        ..strokeWidth = 1
+        ..strokeCap = StrokeCap.round;
       canvas.drawLine(
           Offset(lastPoint.x + offset.dx, lastPoint.y + offset.dy),
           Offset(currentPoint.x + offset.dx, currentPoint.y + offset.dy),
-          Paint()
-            ..color = Colors.black.withOpacity(0.5)
-            ..strokeWidth = 1
-            ..strokeCap = StrokeCap.round);
+          paint);
     }
+
     canvas.drawLine(
         Offset(startPoint.x + offset.dx, startPoint.y + offset.dy),
         Offset(lassoPoints.last.x + offset.dx, lassoPoints.last.y + offset.dy),
