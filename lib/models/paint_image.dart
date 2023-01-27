@@ -199,7 +199,7 @@ class PaintImage extends PaintElement {
   void downloadImage(VoidCallback callback) async {
     try {
       Uint8List fileBytes = await appwriteCustomStorage.getFileDownload(
-          bucketId: '62e40e4e2d262cc2e179', fileId: appwriteFileId);
+          bucketId: imageStorageId, fileId: appwriteFileId);
       _imageData = fileBytes;
       // final ui.Codec codec = await ui.instantiateImageCodec(fileBytes);
 

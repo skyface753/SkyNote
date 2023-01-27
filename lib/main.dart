@@ -45,8 +45,6 @@ import 'package:http/io_client.dart';
 import 'package:http/http.dart' as http;
 import 'package:appwrite/appwrite.dart';
 
-String storageID = '62e2afd619bea62ecafd';
-
 void main() {
   runApp(const MyApp());
 }
@@ -132,8 +130,6 @@ String _canvasStateToString(CanvasState state, SelectionModes mode) {
   }
 }
 
-String imageStorageID = "62e40e4e2d262cc2e179";
-
 class InfiniteCanvasPage extends StatefulWidget {
   final String? noteBookId;
   const InfiniteCanvasPage({Key? key, required this.noteBookId})
@@ -183,7 +179,7 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
     print("Height: ${decodedImage.height}");
     InputFile inputFile = InputFile(path: file.path);
     var uploadedFile = await appwriteStorage.createFile(
-        bucketId: imageStorageID, fileId: 'unique()', file: inputFile);
+        bucketId: imageStorageId, fileId: 'unique()', file: inputFile);
     print("File Uploaded");
     PaintImage newPaintImage = PaintImage(
         uploadedFile.$id,
@@ -267,7 +263,8 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
       // final inputFile = InputFile(path: file.path, filename: _noteBook.name);
       final inputFile = InputFile(bytes: bytes, filename: _noteBook.name);
       _noteBook.appwriteFileId = await appwriteStorage
-          .createFile(bucketId: storageID, fileId: 'unique()', file: inputFile)
+          .createFile(
+              bucketId: notebookStorageId, fileId: 'unique()', file: inputFile)
           .then((value) => value.$id);
       loading = false;
       oldNotebookName = _noteBook.name;
@@ -277,7 +274,7 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
     String notebookId = widget.noteBookId!;
 
     Uint8List file = await appwriteStorage.getFileDownload(
-        bucketId: '62e2afd619bea62ecafd', fileId: notebookId);
+        bucketId: notebookStorageId, fileId: notebookId);
     print("File downloaded");
     String fileContent = String.fromCharCodes(file);
     print(fileContent);
@@ -316,7 +313,7 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
     Uint8List file;
     try {
       file = await appwriteStorage.getFileDownload(
-          bucketId: '62e2afd619bea62ecafd', fileId: notebookId);
+          bucketId: notebookStorageId, fileId: notebookId);
       print("File downloaded (HASH now)");
     } catch (e) {
       showFlashTopBar("Error getting Notebook Hash Online", false);
@@ -387,10 +384,11 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
       String fileId = _noteBook.appwriteFileId ?? 'unique()';
       if (_noteBook.appwriteFileId != null &&
           oldNotebookName != _noteBook.name) {
-        await appwriteStorage.deleteFile(bucketId: storageID, fileId: fileId);
+        await appwriteStorage.deleteFile(
+            bucketId: notebookStorageId, fileId: fileId);
       }
       var createdFile = await appwriteStorage.createFile(
-          bucketId: storageID, fileId: fileId, file: inputFile);
+          bucketId: notebookStorageId, fileId: fileId, file: inputFile);
       _noteBook.appwriteFileId = createdFile.$id;
       oldNotebookName = _noteBook.name;
       print("File saved");
@@ -1092,7 +1090,7 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                                                       await appwriteStorage
                                                           .deleteFile(
                                                               bucketId:
-                                                                  imageStorageID,
+                                                                  imageStorageId,
                                                               fileId:
                                                                   appwriteFileID);
                                                       setState(() {
@@ -1522,7 +1520,7 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                                                       await appwriteStorage
                                                           .deleteFile(
                                                               bucketId:
-                                                                  imageStorageID,
+                                                                  imageStorageId,
                                                               fileId:
                                                                   appwriteFileID);
                                                       setState(() {

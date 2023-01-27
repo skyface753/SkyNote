@@ -26,14 +26,14 @@ class AllOnlineImagesScreenState extends State<AllOnlineImagesScreen> {
 
   Future<List<File>> getImages() async {
     List<File> files = await appwriteStorage
-        .listFiles(bucketId: imageStorageID)
+        .listFiles(bucketId: imageStorageId)
         .then((value) => value.files);
     return files;
   }
 
   Future<Uint8List> getSingleImage(String id) async {
     Uint8List image = await appwriteStorage.getFileDownload(
-        bucketId: imageStorageID, fileId: id);
+        bucketId: imageStorageId, fileId: id);
     return image;
   }
 
@@ -68,7 +68,7 @@ class AllOnlineImagesScreenState extends State<AllOnlineImagesScreen> {
                               List<File> files = await getImages();
                               for (File file in files) {
                                 await appwriteStorage.deleteFile(
-                                    bucketId: imageStorageID, fileId: file.$id);
+                                    bucketId: imageStorageId, fileId: file.$id);
                               }
                               setState(() {});
                               Navigator.of(context).pop();
@@ -129,7 +129,7 @@ class AllOnlineImagesScreenState extends State<AllOnlineImagesScreen> {
                                             child: const Text('Delete'),
                                             onPressed: () async {
                                               await appwriteStorage.deleteFile(
-                                                  bucketId: imageStorageID,
+                                                  bucketId: imageStorageId,
                                                   fileId: snapshot
                                                       .data![index].$id);
                                               setState(() {});

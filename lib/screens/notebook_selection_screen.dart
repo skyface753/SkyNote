@@ -35,7 +35,7 @@ class NotebookSelectionScreenState extends State<NotebookSelectionScreen> {
 
   Future<List<File>> getNotebooks() async {
     List<File> files = await appwriteStorage
-        .listFiles(bucketId: '62e2afd619bea62ecafd', orderType: 'ASC')
+        .listFiles(bucketId: notebookStorageId, orderType: 'ASC')
         .then((value) => value.files);
     //Order files by $updatedAt (newest first)
     files.sort((a, b) => b.$updatedAt.compareTo(a.$updatedAt));
@@ -136,7 +136,7 @@ class NotebookSelectionScreenState extends State<NotebookSelectionScreen> {
                                 onPressed: () async {
                                   await appwriteStorage
                                       .deleteFile(
-                                          bucketId: '62e2afd619bea62ecafd',
+                                          bucketId: notebookStorageId,
                                           fileId: snapshot.data!
                                               .elementAt(index)
                                               .$id)
