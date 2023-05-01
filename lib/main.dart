@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
+import 'package:appwrite/models.dart' as appwriteModels;
 import 'package:file_picker/file_picker.dart';
 import 'package:flash/flash.dart';
 import 'package:flutter/foundation.dart';
@@ -281,6 +282,7 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
 
     _noteBook =
         NoteBook.fromJson(json.decode(fileContent), (() => setState(() {})));
+    print(_noteBook.toJson());
     _noteBook.appwriteFileId = notebookId;
     oldNotebookName = _noteBook.name;
     if (_noteBook.selectedSectionIndex != null &&
@@ -380,14 +382,17 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
       // file.writeAsStringSync(_noteBook.toString());
       List<int> bytes = utf8.encode(_noteBook.toString());
       final inputFile = InputFile(bytes: bytes, filename: _noteBook.name);
+      print("Writing NoteBook to File: ${_noteBook.name}");
+      print(_noteBook.toString());
       // final inputFile = InputFile(path: file.path, filename: _noteBook.name);
       String fileId = _noteBook.appwriteFileId ?? 'unique()';
+
       if (_noteBook.appwriteFileId != null &&
           oldNotebookName != _noteBook.name) {
         await appwriteStorage.deleteFile(
             bucketId: notebookStorageId, fileId: fileId);
       }
-      var createdFile = await appwriteStorage.createFile(
+      appwriteModels.File createdFile = await appwriteStorage.createFile(
           bucketId: notebookStorageId, fileId: fileId, file: inputFile);
       _noteBook.appwriteFileId = createdFile.$id;
       oldNotebookName = _noteBook.name;
@@ -1103,30 +1108,30 @@ class InfiniteCanvasPageState extends State<InfiniteCanvasPage> {
                                                         saveToAppwrite();
                                                       });
                                                     }),
-                                                    _currentMousePosition !=
-                                                            null
-                                                        ? Positioned(
-                                                            left:
-                                                                _currentMousePosition!
-                                                                    .dx,
-                                                            top: _currentMousePosition!
-                                                                .dy,
-                                                            child: Text(
-                                                                _currentMousePosition!
-                                                                        .dx
-                                                                        .round()
-                                                                        .toString() +
-                                                                    "/" +
-                                                                    _currentMousePosition!
-                                                                        .dy
-                                                                        .round()
-                                                                        .toString(),
-                                                                style: TextStyle(
-                                                                    color: Colors
-                                                                        .black,
-                                                                    fontSize:
-                                                                        7)))
-                                                        : Container(),
+                                                    // _currentMousePosition !=
+                                                    //         null
+                                                    //     ? Positioned(
+                                                    //         left:
+                                                    //             _currentMousePosition!
+                                                    //                 .dx,
+                                                    //         top: _currentMousePosition!
+                                                    //             .dy,
+                                                    //         child: Text(
+                                                    //             _currentMousePosition!
+                                                    //                     .dx
+                                                    //                     .round()
+                                                    //                     .toString() +
+                                                    //                 "/" +
+                                                    //                 _currentMousePosition!
+                                                    //                     .dy
+                                                    //                     .round()
+                                                    //                     .toString(),
+                                                    //             style: TextStyle(
+                                                    //                 color: Colors
+                                                    //                     .black,
+                                                    //                 fontSize:
+                                                    //                     7)))
+                                                    //     : Container(),
                                                     Listener(
                                                       onPointerHover: (event) {
                                                         print("Hover");
